@@ -44,13 +44,11 @@ export default function ActivityGraph({ id }: OutreachActivityGraphProps) {
   const [activityData, setActivityData] = useState<ActivityDataPoint[]>([]);
 
   useEffect(() => {
-    console.log(id)
     if (!id) return;
 
     let cancelled = false;
 
     async function fetchUserEventDates() {
-      console.log("feetching")
       try {
         const sessions = await pb
           .collection("OutreachSessions")

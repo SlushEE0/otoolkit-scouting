@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ChangeEvent, useState } from "react";
 import { toast } from "sonner";
 import { formatMinutes } from "@/lib/utils";
 import { manualModifyOutreachHours } from "@/lib/db/hours";
@@ -60,6 +60,13 @@ export default function EditUserDialog({
     setLoading(false);
   };
 
+  const onTimeInputChange = function (e: ChangeEvent<HTMLInputElement>) {
+    setNewMinutes((curr) => {
+      if (e.target.value === "") return 0;
+      return parseInt(e.target.value) || curr;
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -86,9 +93,7 @@ export default function EditUserDialog({
               id="outreachMinutes"
               type="number"
               value={newMinutes}
-              onChange={(e) =>
-                setNewMinutes((curr) => parseInt(e.target.value) || curr)
-              }
+              onChange={onTimeInputChange}
             />
             <p className="g text-sm text-muted-foreground">
               New: {formatMinutes(newMinutes)}

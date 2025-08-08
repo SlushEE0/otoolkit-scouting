@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use, act } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AreaChart,
   Area,
@@ -11,6 +11,8 @@ import {
   ResponsiveContainer,
   ReferenceLine
 } from "recharts";
+import { pb } from "@/lib/pbaseClient";
+import { type t_pb_OutreachSession } from "@/lib/types";
 
 const MONTHS = {
   Jan: 1,
@@ -27,62 +29,6 @@ const MONTHS = {
   Dec: 12
 } as Record<string, number>;
 
-const DATES = [
-  // August 2024 - 3 dates (fewer)
-  "2024-08-05T14:20:00Z",
-  "2024-08-18T09:15:00Z",
-  "2024-08-29T16:45:00Z",
-
-  // September 2024 - 6 dates (more)
-  "2024-09-03T11:30:00Z",
-  "2024-09-08T08:00:00Z",
-  "2024-09-14T13:45:00Z",
-  "2024-09-20T17:20:00Z",
-  "2024-09-25T10:10:00Z",
-  "2024-09-30T15:35:00Z",
-
-  // October 2024 - 2 dates (fewer)
-  "2024-10-12T12:00:00Z",
-  "2024-10-27T18:30:00Z",
-
-  // November 2024 - 7 dates (more)
-  "2024-11-02T07:45:00Z",
-  "2024-11-06T14:15:00Z",
-  "2024-11-11T09:30:00Z",
-  "2024-11-16T16:00:00Z",
-  "2024-11-21T11:45:00Z",
-  "2024-11-26T13:20:00Z",
-  "2024-11-30T19:10:00Z",
-
-  // December 2024 - 4 dates (moderate)
-  "2024-12-07T10:25:00Z",
-  "2024-12-15T15:40:00Z",
-  "2024-12-22T08:55:00Z",
-  "2024-12-31T23:59:00Z",
-
-  // January 2025 - 8 dates (most)
-  "2025-01-03T06:30:00Z",
-  "2025-01-07T12:15:00Z",
-  "2025-01-12T09:45:00Z",
-  "2025-01-16T14:30:00Z",
-  "2025-01-20T11:20:00Z",
-  "2025-01-24T16:45:00Z",
-  "2025-01-28T13:10:00Z",
-  "2025-01-31T17:55:00Z",
-
-  // February 2025 - 3 dates (fewer)
-  "2025-02-08T10:00:00Z",
-  "2025-02-18T14:25:00Z",
-  "2025-02-26T16:40:00Z",
-
-  // March 2025 - 5 dates (moderate)
-  "2025-03-05T09:20:00Z",
-  "2025-03-12T12:35:00Z",
-  "2025-03-18T15:50:00Z",
-  "2025-03-25T11:15:00Z",
-  "2025-03-30T18:05:00Z"
-];
-
 interface ActivityDataPoint {
   month: string;
   year: number;
@@ -98,10 +44,37 @@ export default function ActivityGraph({ id }: OutreachActivityGraphProps) {
   const [activityData, setActivityData] = useState<ActivityDataPoint[]>([]);
 
   useEffect(() => {
-    // Simulate fetching data
-    setTimeout(() => {
-      setTimestamps(DATES);
-    }, 50);
+    console.log(id)
+    if (!id) return;
+
+    let cancelled = false;
+
+    async function fetchUserEventDates() {
+      console.log("feetching")
+      try {
+        const sessions = await pb
+          .collection("OutreachSessions")
+          .getFullList<t_pb_OutreachSession>({
+            filter: `user="${id}"`,
+            expand: "event"
+          });
+
+        const dates = sessions
+          .map((s) => s.expand?.event?.date)
+          .filter(Boolean) as string[];
+
+        if (!cancelled) setTimestamps(dates);
+      } catch (err) {
+        console.error("Failed to fetch outreach sessions for user", err);
+        if (!cancelled) setTimestamps([]);
+      }
+    }
+
+    fetchUserEventDates();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id, setTimestamps]);
 
   useEffect(() => {

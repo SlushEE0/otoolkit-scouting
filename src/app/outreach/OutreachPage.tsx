@@ -269,7 +269,7 @@ export default function OutreachPage({
             </CardHeader>{" "}
             <CardContent className="pt-2 size-full flex justify-center items-center">
               <Suspense fallback={<Loader />}>
-                <ActivityGraph id="" />
+                <ActivityGraph id={user.id} />
               </Suspense>
             </CardContent>
           </Card>

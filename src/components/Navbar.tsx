@@ -43,13 +43,21 @@ const NAV_ITEMS = [
     icon: <User className="h-5 w-5" />,
     label: "Home",
     url: "/",
-    msg: "Going Home"
+    msg: "",
+    func: () => {
+      toast.warning("Under Construction");
+      return false;
+    }
   },
   {
     icon: <SearchCode className="h-5 w-5" />,
     label: "Scouting",
     url: "/scouting",
-    msg: "Lets go scout!"
+    msg: "Lets go scout!",
+    func: () => {
+      toast.warning("Under Construction");
+      return false;
+    }
   },
   {
     icon: <Clock className="h-5 w-5" />,
@@ -78,7 +86,11 @@ const NAV_ITEMS = [
 
 const PROFILE_ITEM = {
   url: "/user/profile",
-  msg: "Going to Profile"
+  msg: "Going to Profile",
+  func: () => {
+    toast.warning("Under Construction");
+    return false;
+  }
 };
 
 const LOGIN_ITEM = {

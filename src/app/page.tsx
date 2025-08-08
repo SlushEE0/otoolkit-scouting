@@ -1,4 +1,8 @@
+import { redirect } from "next/navigation";
+
 export default function Home() {
+  redirect("/outreach");
+
   return (
     <main className="pt-20">
       <div className="flex justify-center items-center h-screen">

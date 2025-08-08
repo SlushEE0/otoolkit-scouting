@@ -8,7 +8,7 @@ import { pb, recordToImageUrl } from "@/lib/pbaseClient";
 import { useNavbar } from "@/hooks/useNavbar";
 import { useIsHydrated } from "@/hooks/useIsHydrated";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { t_pb_UserData } from "@/lib/types";
+import type { t_pb_User, t_pb_UserData } from "@/lib/types";
 
 import { formatMinutes, getBadgeStatusStyles } from "@/lib/utils";
 
@@ -39,6 +39,7 @@ interface PaginatedResponse {
 type Props = {
   isAdmin?: boolean;
   userData?: t_pb_UserData;
+  user: t_pb_User;
   outreachMinutesCutoff: number;
 };
 
@@ -66,6 +67,7 @@ const getKey = (
 export default function OutreachPage({
   isAdmin = false,
   userData,
+  user,
   outreachMinutesCutoff
 }: Props) {
   const { setDefaultShown } = useNavbar();
@@ -102,15 +104,6 @@ export default function OutreachPage({
     setDefaultShown(false);
   }, [setDefaultShown]);
 
-  useEffect(() => {
-    loadMore();
-  });
-
-  useEffect(() => {
-    if (isHydrated && !hasMore && !isLoadingMore) {
-    }
-  });
-
   if (!isHydrated)
     return (
       <div className="flex items-center justify-center h-screen">
@@ -136,19 +129,17 @@ export default function OutreachPage({
 
   return (
     <div
-      className={`container mx-auto h-screen flex flex-col ${
-        isMobile ? "pt-4 px-4 pb-20" : "pt-3"
-      }`}>
+      className={`container mx-auto min-h-screen flex flex-col gap-3 px-3 sm:px-4 pt-3 pb-24`}>
       {/* Header */}
-      <div className="flex-shrink-0 mb-4 justify-between flex items-center">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Users className={`${isMobile ? "h-5 w-5" : "h-6 w-6"}`} />
-            <h1 className={`${isMobile ? "text-2xl" : "text-3xl"} font-bold`}>
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 py-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="h-5 w-5 md:h-6 md:w-6" />
+            <h1 className="text-2xl md:text-3xl font-bold truncate">
               Outreach Dashboard
             </h1>
           </div>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-sm truncate">
             {isAdmin
               ? "Manage and view user outreach data"
               : "View outreach data"}
@@ -156,7 +147,7 @@ export default function OutreachPage({
         </div>
 
         {isAdmin && (
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="sm" asChild>
             <Link href="/outreach/manage">Manage Events</Link>
           </Button>
         )}
@@ -164,28 +155,25 @@ export default function OutreachPage({
 
       {/* Stats Cards */}
       <div
-        className={`${
-          isMobile ? "flex flex-col gap-3" : "flex gap-4"
-        } mb-4 flex-shrink-0`}>
+        className={`grid grid-cols-1 md:grid-cols-[22rem_1fr] gap-3 md:gap-4`}>
         {/* Enhanced User Hours Card */}
-        <Card className={`${isMobile ? "w-full" : "w-80"}`}>
+        <Card className="w-full">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
               <div className="relative flex items-center justify-center">
-                <Avatar className="h-12 w-12 flex-shrink-0">
+                <Avatar className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0">
                   <AvatarImage
-                    src={recordToImageUrl(userData?.expand?.user)?.toString()}
-                    alt={userData?.expand?.user.name}
+                    src={recordToImageUrl(user)?.toString()}
+                    alt={user.name}
                     className="rounded-full object-cover"
                   />
                   <AvatarFallback className="bg-gradient-to-br from-blue-800 to-purple-800 text-white text-sm font-semibold rounded-full flex items-center justify-center h-full w-full">
-                    {userData?.expand?.user.name?.charAt(0).toUpperCase() ||
-                      "?"}
+                    {user.name?.charAt(0).toUpperCase() || "?"}
                   </AvatarFallback>
                 </Avatar>
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="font-semibold text-lg truncate">
+                <h3 className="font-semibold text-base md:text-lg truncate">
                   {userData?.expand?.user.name || "Unknown User"}
                 </h3>
                 <p className="text-sm text-muted-foreground truncate">
@@ -205,7 +193,7 @@ export default function OutreachPage({
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <div className="text-3xl font-bold">
+                    <div className="text-2xl md:text-3xl font-bold">
                       {formatMinutes(userData.outreachMinutes)}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
@@ -217,7 +205,7 @@ export default function OutreachPage({
                       userData.outreachMinutes,
                       outreachMinutesCutoff,
                       outreachMinutesCutoff - 60 * 3
-                    )} text-sm px-3 py-1`}>
+                    )} text-xs md:text-sm px-2 md:px-3 py-1`}>
                     {userData.outreachMinutes >= outreachMinutesCutoff
                       ? "Complete"
                       : "In Progress"}
@@ -269,7 +257,7 @@ export default function OutreachPage({
           </CardContent>
         </Card>
 
-        {/* Activity Graph Card - Replaces the Loader */}
+        {/* Activity Graph Card - Hidden on mobile to keep layout clean */}
         {!isMobile && (
           <Card className="grow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -288,10 +276,10 @@ export default function OutreachPage({
         )}
       </div>
 
-      <Separator className="w-full mb-5" />
+      <Separator className="w-full" />
 
       {/* Table Container - Takes remaining space */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <OutreachTable
           allUsers={allUsers}
           isAdmin={isAdmin}

@@ -24,7 +24,10 @@ export default async function ServerDataFetcher() {
 
         outreachMinutesCutoff = parseInt(record.value) || 900;
       } catch (e) {
-        console.warn(`[OutreachPage: "${authRecord?.id}"]`, e);
+        console.warn(
+          `[OutreachPage: "${authRecord ? authRecord?.id : "? id ?"}"]`,
+          e
+        );
       }
 
       return [data, authRecord, outreachMinutesCutoff];
@@ -37,5 +40,7 @@ export default async function ServerDataFetcher() {
 
   const isAdmin = user.role === "admin";
 
-  return <OutreachPage {...{ isAdmin, userData, outreachMinutesCutoff }} />;
+  return (
+    <OutreachPage {...{ isAdmin, user, userData, outreachMinutesCutoff }} />
+  );
 }

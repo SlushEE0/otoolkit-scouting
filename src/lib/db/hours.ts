@@ -1,3 +1,4 @@
+import type { RecordModel } from "pocketbase";
 import { pb } from "../pbaseClient";
 import { BaseStates } from "../states";
 
@@ -8,18 +9,24 @@ export async function manualModifyOutreachHours(
   deltaMinutes: number
 ) {
   if (!ManualHoursEventID) {
+    let manualHoursEvent: RecordModel | null = null;
+
     try {
-      const manualHoursEvent = await pb
+      manualHoursEvent = await pb
         .collection("OutreachEvents")
         .getFirstListItem(`name="ManualHours"`);
-
-      if (!manualHoursEvent) {
+    } catch {
+      try {
+        manualHoursEvent = await pb.collection("OutreachEvents").create({
+          name: "ManualHours"
+        });
+      } catch {
         return BaseStates.ERROR;
       }
+    } finally {
+      if (!manualHoursEvent) return BaseStates.ERROR;
 
       ManualHoursEventID = manualHoursEvent.id;
-    } catch {
-      return BaseStates.ERROR;
     }
   }
 

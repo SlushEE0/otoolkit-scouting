@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
+// Removed ScrollArea to prevent nested scrolling / clipping
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -111,10 +111,10 @@ export function OutreachTable({
     setSortedUsers(sortUsers(allUsers, sortConfig));
   }, [allUsers, sortConfig]);
 
-  // Mobile Card Layout
+  // Mobile Card Layout (avoid nested scroll; parent provides vertical scrolling)
   if (isMobile) {
     return (
-      <ScrollArea className="h-full">
+      <div className="w-full">
         <div className="space-y-3">
           {/* Sort Controls for Mobile */}
           <div className="flex gap-2 p-2 bg-muted/50 rounded-lg">
@@ -241,35 +241,33 @@ export function OutreachTable({
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
     );
   }
 
-  // Desktop Table Layout
+  // Desktop Table Layout (enable horizontal scroll to avoid clipped cells)
   return (
-    <ScrollArea className="h-full">
-      <Table className="w-full">
+    <div className="relative w-full h-full overflow-x-auto">
+      <Table className="w-full min-w-[780px]">
         <TableHeader>
           <TableRow>
             {SortedTableHeads.map((head) => (
               <TableHead
                 key={head.key}
-                className="cursor-pointer relative"
-                style={{
-                  minWidth:
-                    head.key === "user"
-                      ? "300px"
-                      : head.key === "outreachMinutes"
-                      ? "150px"
-                      : "200px"
-                }}
+                className={`cursor-pointer relative ${
+                  head.key === "user"
+                    ? "min-w-[18rem]"
+                    : head.key === "outreachMinutes"
+                    ? "min-w-[10rem]"
+                    : "min-w-[12rem]"
+                }`}
                 onClick={() => {
                   setSortConfig((prev) => {
                     const newDirection =
                       prev.key === head.key && prev.direction === "ascending"
                         ? "descending"
                         : "ascending";
-                    return { key: head.key, direction: newDirection };
+                    return { key: head.key, direction: newDirection } as any;
                   });
                 }}>
                 <div className="flex items-center justify-baseline gap-5">
@@ -291,7 +289,7 @@ export function OutreachTable({
                 </div>
               </TableHead>
             ))}
-            {isAdmin && <TableHead>Manage</TableHead>}
+            {isAdmin && <TableHead className="min-w-[8rem]">Manage</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -314,7 +312,7 @@ export function OutreachTable({
             sortedUsers.map((userData) => (
               <TableRow key={userData.id}>
                 <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <Avatar>
                       <AvatarImage
                         src={recordToImageUrl(
@@ -327,11 +325,11 @@ export function OutreachTable({
                         {userData.expand?.user.name.charAt(0) || "?"}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <div className="font-medium">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">
                         {userData.expand?.user?.name || "Unknown"}
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-muted-foreground truncate">
                         {userData.expand?.user?.email}
                       </div>
                     </div>
@@ -343,7 +341,7 @@ export function OutreachTable({
                       userData.outreachMinutes,
                       outreachMinutesCutoff,
                       outreachMinutesCutoff - 60 * 3
-                    )} text-md`}>
+                    )} text-sm md:text-base`}>
                     {formatMinutes(userData.outreachMinutes)}
                   </Badge>
                 </TableCell>
@@ -373,6 +371,6 @@ export function OutreachTable({
           )}
         </TableBody>
       </Table>
-    </ScrollArea>
+    </div>
   );
 }

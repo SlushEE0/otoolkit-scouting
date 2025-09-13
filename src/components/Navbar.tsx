@@ -13,15 +13,7 @@ import { recordToImageUrl } from "@/lib/pbaseClient";
 import { logout } from "@/lib/auth";
 import type { t_pb_User } from "@/lib/types";
 
-import {
-  User,
-  FileSpreadsheet,
-  Clock,
-  Signature,
-  Construction,
-  Menu,
-  SearchCode
-} from "lucide-react";
+import { User, Clock, Menu, SearchCode, LogOut } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,7 +59,7 @@ const NAV_ITEMS = [
   },
   {
     onlyHomePersist: true,
-    icon: <Signature className="h-5 w-5" />,
+    icon: <LogOut className="h-5 w-5" />,
     label: "Sign Out",
     url: "/",
     msg: "Signing Out",
@@ -308,6 +300,7 @@ function Desktop({ navItems, user, onNavigate, defaultToShown }: ChildProps) {
   return (
     <div
       ref={navbarRef}
+      data-navbar-root
       className={`fixed top-2 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ease-in-out w-max ${
         isVisible ? "translate-y-0" : "-translate-y-full"
       }`}>

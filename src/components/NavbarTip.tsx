@@ -1,110 +1,60 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { ChevronUp } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavbar } from "@/hooks/useNavbar";
+
+import { ChevronUp } from "lucide-react";
 
 const STORAGE_KEY = "navbarTipSeen";
 
-export function NavbarTip({ className }: { className?: string }) {
+export default function NavbarTip() {
   const [visible, setVisible] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [navMetrics, setNavMetrics] = useState<{
-    top: number;
-    height: number;
-  } | null>(null);
-  const navbarState = useNavbar();
-  const rafRef = useRef<number | null>(null);
+  const [delayComplete, setDelayComplete] = useState(false);
 
-  const persistSeen = useCallback(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, "1");
-    } catch {}
-    setVisible(false);
-  }, []);
+  const { expanded, isDisabled } = useNavbar();
+  const isMobile = useIsMobile();
 
-  const measureNavbar = useCallback(() => {
-    const el = document.querySelector<HTMLElement>("[data-navbar-root]");
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    setNavMetrics({ top: rect.top + window.scrollY, height: rect.height });
-  }, []);
+  console.log("expanded", expanded);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      if (localStorage.getItem(STORAGE_KEY) === "1") return;
-    } catch {}
+    const hasSeen = localStorage.getItem(STORAGE_KEY);
 
-    const isCoarse = window.matchMedia(
-      "(any-pointer: coarse), (pointer: coarse)"
-    ).matches;
-    setIsMobile(isCoarse);
-
-    // delay show for layout + navbar mount
-    const showTimer = setTimeout(() => {
-      measureNavbar();
+    if (!hasSeen && !isDisabled) {
       setVisible(true);
-    }, 600);
+      setTimeout(() => setDelayComplete(true), 2000);
+    } else {
+      setVisible(false);
+    }
+  }, [isDisabled]);
 
-    const onResize = () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(measureNavbar);
-    };
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!visible) return;
-      if (e.clientY <= 8) persistSeen();
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") persistSeen();
-    };
-
-    window.addEventListener("resize", onResize);
-    window.addEventListener("scroll", onResize, { passive: true });
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    window.addEventListener("keydown", handleKey);
-
-    onResize();
-
-    return () => {
-      clearTimeout(showTimer);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("scroll", onResize);
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("keydown", handleKey);
-    };
-  }, [measureNavbar, persistSeen, visible]);
-
-  if (!visible || !navMetrics) return null;
-
-  // If navbar defaultToShown is false, we still position where it would appear (top + height + spacing)
-  const offsetY = (navMetrics.top ?? 0) + navMetrics.height + 6; // 6px gap under navbar
+  useEffect(() => {
+    if (expanded && delayComplete) {
+      localStorage.setItem(STORAGE_KEY, "true");
+      setVisible(false);
+    }
+  }, [expanded, delayComplete]);
 
   return (
-    <div
-      role="note"
-      aria-label={
-        isMobile
-          ? "Tap the menu button to open navigation"
-          : "Move your cursor to the top edge to reveal the navbar"
-      }
-      onClick={persistSeen}
-      onTouchStart={persistSeen}
-      style={{ top: offsetY }}
-      className={[
-        "fixed left-1/2 -translate-x-1/2 z-40 select-none flex flex-col items-center gap-1",
-        "pointer-events-auto cursor-pointer animate-in fade-in",
-        className || ""
-      ].join(" ")}>
-      <div className="h-px w-56 bg-gradient-to-r from-transparent via-primary/70 to-transparent animate-pulse" />
-      <ChevronUp className="h-4 w-4 text-primary animate-bounce" />
-      <span className="text-[10px] font-medium tracking-wide text-primary/80">
-        {isMobile ? "Open the Nav Menu" : "Open the Navbar"}
-      </span>
-    </div>
+    visible && (
+      <div
+        role="note"
+        aria-label={
+          isMobile
+            ? "Tap the menu button to open navigation"
+            : "Move your cursor to the top edge to reveal the navbar"
+        }
+        className="fixed left-1/2 -translate-x-1/2 z-40 select-none flex flex-col items-center gap-1 pointer-events-auto 
+                  cursor-pointer animate-in fade-in transition-all duration-[350ms]"
+        style={{
+          top: expanded ? "70px" : "10px"
+        }}>
+        <div className="h-px w-56 bg-gradient-to-r from-transparent via-primary/70 to-transparent animate-pulse" />
+        <ChevronUp className="h-4 w-4 text-primary animate-bounce" />
+        <span className="text-[10px] font-medium tracking-wide text-primary/80">
+          {isMobile ? "Open the Nav Menu" : "Open the Navbar"}
+        </span>
+      </div>
+    )
   );
 }
-
-export default NavbarTip;

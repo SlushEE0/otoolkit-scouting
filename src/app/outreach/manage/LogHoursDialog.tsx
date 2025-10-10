@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { pb } from "@/lib/pbaseClient";
-import { formatMinutes } from "@/lib/utils";
-import type { t_pb_OutreachEvent, t_pb_User } from "@/lib/types";
-
-import { Clock, Loader2, Plus, Trash2, User } from "lucide-react";
+import { createSessionsBulk, updateEvent } from "@/lib/db/outreach";
+import { listAllUsers } from "@/lib/db/user";
+import { formatMinutes, cn } from "@/lib/utils";
+import type { OutreachEvent, User } from "@/lib/types/pocketbase";
+import { logger } from "@/lib/logger";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,150 +19,218 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from "@/components/ui/command";
+
+import {
+  Clock,
+  Loader2,
+  Plus,
+  Trash2,
+  User as UserIcon,
+  ChevronsUpDown,
+  Check,
+  Save,
+  Calendar
+} from "lucide-react";
 
 interface LogHoursDialogProps {
-  event: t_pb_OutreachEvent;
+  event: OutreachEvent;
   onHoursLogged: () => void;
+  // Optional: parent can revalidate events after rename/date change
+  onEventUpdated?: () => void;
 }
 
 interface UserSubmission {
-  userId: string; // Optional for initial state
+  rowId: string; // stable row key
+  userId: string; // selected user id
   minutes: number;
 }
 
+// Combobox component for selecting a user with search
+
 export default function LogHoursDialog({
   event,
-  onHoursLogged
+  onHoursLogged,
+  onEventUpdated
 }: LogHoursDialogProps) {
   const [open, setOpen] = useState(false);
-  const [users, setUsers] = useState<t_pb_User[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [fetchingUsers, setFetchingUsers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [savingEvent, setSavingEvent] = useState(false);
+
+  const [isSaveDisabled, setIsSaveDisabled] = useState(true);
+  const [eventName, setEventName] = useState(event.name);
+  const [eventDate, setEventDate] = useState(event.date.split(" ").at(0));
 
   const [submissions, setSubmissions] = useState<UserSubmission[]>([
     {
+      rowId: crypto.randomUUID(),
       userId: "",
       minutes: 0
     }
   ]);
+
+  // Reset editable event fields whenever dialog opens
+  useEffect(() => {
+    if (open) {
+      setEventName(event.name);
+      setEventDate(event.date.split(" ").at(0));
+    }
+  }, [open, event.name, event.date]);
+
+  useEffect(() => {
+    if (open) {
+      let hasChanges = false;
+      if (event.name !== eventName) hasChanges = true;
+      if (event.date.split(" ").at(0) !== eventDate) hasChanges = true;
+
+      setIsSaveDisabled(!hasChanges);
+    }
+  }, [eventName, eventDate, open, event.name, event.date]);
 
   // Fetch users when dialog opens
   useEffect(() => {
     if (!users.length && open) {
       fetchUsers();
     }
-  }, [users, open]);
+  }, [users.length, open]);
 
-  const fetchUsers = async function () {
+  async function fetchUsers() {
     setFetchingUsers(true);
     try {
-      const response = await pb.collection("users").getFullList<t_pb_User>({
-        sort: "name"
-      });
-
-      const sorted = response.toSorted((a, b) => a.name.localeCompare(b.name));
-
-      setUsers(sorted);
-    } catch (error) {
-      console.error("Error fetching users:", error);
+      setUsers(await listAllUsers());
+    } catch (error: any) {
+      logger.error({ err: error?.message }, "Error fetching users");
       toast.error("Failed to load users");
     } finally {
       setFetchingUsers(false);
     }
-  };
+  }
 
-  const addNewSubmission = function () {
+  const addNewSubmission = () =>
     setSubmissions((prev) => [
       ...prev,
       {
-        userId: crypto.randomUUID(),
+        rowId: crypto.randomUUID(),
+        userId: "",
         minutes: 0
       }
     ]);
-  };
 
-  const removeSubmission = function (userId: string) {
+  const removeSubmission = (rowId: string) => {
     if (submissions.length > 1) {
-      setSubmissions((prev) => prev.filter((sub) => sub.userId !== userId));
+      setSubmissions((prev) => prev.filter((s) => s.rowId !== rowId));
     } else {
       toast.error("At least one user submission is required");
     }
   };
 
   const updateSubmission = function <T extends keyof UserSubmission>(
-    userId: string,
+    rowId: string,
     field: T,
     value: UserSubmission[T]
   ) {
     setSubmissions((prev) =>
-      prev.map((sub) =>
-        sub.userId === userId ? { ...sub, [field]: value } : sub
-      )
+      prev.map((s) => (s.rowId === rowId ? { ...s, [field]: value } : s))
     );
   };
+
+  const totalMinutes = useMemo(
+    () => submissions.reduce((acc, s) => acc + (s.minutes || 0), 0),
+    [submissions]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validate submissions
-    const validSubmissions = submissions.filter(
-      (sub) => sub.userId && sub.minutes > 0
-    );
+    const valid = submissions.filter((s) => s.userId && s.minutes > 0);
 
-    if (validSubmissions.length === 0) {
+    if (!valid.length) {
       toast.error("Please select at least one user and enter valid minutes");
       return;
     }
 
     // Check for duplicate users
-    const userIds = validSubmissions.map((sub) => sub.userId);
-    const uniqueUserIds = new Set(userIds);
-    if (userIds.length !== uniqueUserIds.size) {
+    const ids = valid.map((s) => s.userId);
+    if (new Set(ids).size !== ids.length) {
       toast.error("Cannot log hours for the same user multiple times");
       return;
     }
 
     setSubmitting(true);
     try {
-      // Create all sessions
-      const promises = validSubmissions.map((sub) =>
-        pb.collection("OutreachSessions").create(
-          {
-            user: sub.userId,
-            event: event.id,
-            minutes: sub.minutes
-          },
-          {
-            requestKey: null // dont autocancel
-          }
-        )
+      await createSessionsBulk(
+        valid.map((s) => ({
+          userId: s.userId,
+          eventId: event.id,
+          minutes: s.minutes
+        }))
       );
 
-      await Promise.all(promises);
-
+      logger.info({ eventId: event.id, count: valid.length }, "Hours logged");
       toast.success(
-        `Hours logged successfully for ${validSubmissions.length} user${
-          validSubmissions.length > 1 ? "s" : ""
+        `Hours logged successfully for ${valid.length} user${
+          valid.length > 1 ? "s" : ""
         }`
       );
 
       // Reset form
-      setSubmissions([]);
-      addNewSubmission(); // Add one empty submission for convenience
+      setSubmissions([
+        {
+          rowId: crypto.randomUUID(),
+          userId: "",
+          minutes: 0
+        }
+      ]);
 
       setOpen(false);
       onHoursLogged();
-    } catch (error) {
-      console.error("Error logging hours:", error);
+    } catch (error: any) {
+      logger.error({ eventId: event.id, err: error?.message }, "Error logging hours");
       toast.error("Failed to log hours");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEventSave = async () => {
+    if (!eventName || !eventDate) {
+      toast.error("Event name and date are required");
+      return;
+    }
+
+    if (eventName === event.name && eventDate === event.date.split(" ")[0]) {
+      toast.message("No changes to save");
+      return;
+    }
+
+    setSavingEvent(true);
+    try {
+      await updateEvent(event.id, {
+        name: eventName,
+        date: eventDate
+      });
+      logger.info({ eventId: event.id }, "Event updated");
+      toast.success("Event updated");
+      onEventUpdated?.();
+    } catch (error: any) {
+      logger.error({ eventId: event.id, err: error?.message }, "Error updating event");
+      toast.error("Failed to update event");
+    } finally {
+      setSavingEvent(false);
     }
   };
 
@@ -174,14 +242,71 @@ export default function LogHoursDialog({
           Log Hours
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[750px] max-h-[85vh] overflow-y-auto space-y-6">
         <DialogHeader>
-          <DialogTitle>Log Hours for {event.name}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" /> Log Hours for {event.name}
+          </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-3">
+
+        {/* Event editable details */}
+        <div className="rounded-lg border p-4 bg-muted/30 space-y-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Calendar className="h-4 w-4" /> Event Details
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="event-name">Event Name</Label>
+              <Input
+                id="event-name"
+                value={eventName}
+                onChange={(e) => setEventName(e.target.value)}
+                placeholder="Event name"
+                disabled={savingEvent || submitting}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="event-date">Event Date</Label>
+              <Input
+                id="event-date"
+                type="date"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+                disabled={savingEvent || submitting}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant={isSaveDisabled ? "secondary" : "default"}
+              size="sm"
+              onClick={handleEventSave}
+              disabled={savingEvent || submitting || isSaveDisabled}>
+              {savingEvent ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" /> Save Changes
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* User hours section */}
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-base font-medium">User Hours</Label>
+              <div className="space-y-1">
+                <Label className="text-base font-medium">User Hours</Label>
+                <p className="text-xs text-muted-foreground">
+                  Search & select each user, then enter minutes. Add additional
+                  rows as needed.
+                </p>
+              </div>
               <Button
                 type="button"
                 variant="outline"
@@ -189,17 +314,16 @@ export default function LogHoursDialog({
                 onClick={addNewSubmission}
                 disabled={submitting || fetchingUsers}
                 className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add User
+                <Plus className="h-4 w-4" /> Add Row
               </Button>
             </div>
 
             {fetchingUsers ? (
               <div className="space-y-3">
-                {[1].map((i) => (
+                {[1, 2].map((i) => (
                   <div key={i} className="flex gap-3 items-start">
                     <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-20" />
                       <Skeleton className="h-10 w-full" />
                     </div>
                     <div className="w-32 space-y-2">
@@ -210,55 +334,45 @@ export default function LogHoursDialog({
                   </div>
                 ))}
                 <div className="text-sm text-muted-foreground flex items-center gap-2 justify-center py-4">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading users...
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading users...
                 </div>
               </div>
             ) : (
               <div className="space-y-3">
-                {submissions.map((submission, index) => (
+                {submissions.map((sub) => (
                   <div
-                    key={submission.userId}
-                    className="flex gap-3 items-start p-3 border rounded-lg bg-muted/20">
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor={`user-${submission.userId}`}>User</Label>
-                      <Select
-                        value={submission.userId}
-                        onValueChange={(value) =>
-                          updateSubmission(submission.userId, "userId", value)
+                    key={sub.rowId}
+                    className="flex flex-col sm:flex-row gap-3 items-start p-3 border rounded-lg bg-muted/10">
+                    <div className="flex-1 space-y-2 w-full">
+                      <Label>User</Label>
+                      <UserCombobox
+                        users={users}
+                        value={sub.userId}
+                        onChange={(val) =>
+                          updateSubmission(sub.rowId, "userId", val)
                         }
-                        disabled={submitting}>
-                        <SelectTrigger
-                          id={`user-${submission.userId}`}
-                          className="w-full">
-                          <SelectValue placeholder="Select a user..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {users.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        disabled={submitting}
+                      />
                     </div>
 
-                    <div className="w-32 space-y-2">
-                      <Label htmlFor={`minutes-${submission.userId}`}>
-                        Minutes
-                        {submission.minutes > 0 && (
-                          <span className="block text-xs text-muted-foreground">
-                            ({formatMinutes(submission.minutes)})
+                    <div className="w-full sm:w-32 space-y-2">
+                      <Label
+                        htmlFor={`minutes-${sub.rowId}`}
+                        className="flex items-center justify-between w-full">
+                        <span>Minutes</span>
+                        {sub.minutes > 0 && (
+                          <span className="text-[10px] font-medium text-muted-foreground">
+                            {formatMinutes(sub.minutes)}
                           </span>
                         )}
                       </Label>
                       <Input
-                        id={`minutes-${submission.userId}`}
+                        id={`minutes-${sub.rowId}`}
                         type="number"
-                        value={submission.minutes || ""}
+                        value={sub.minutes || ""}
                         onChange={(e) =>
                           updateSubmission(
-                            submission.userId,
+                            sub.rowId,
                             "minutes",
                             parseInt(e.target.value) || 0
                           )
@@ -269,42 +383,134 @@ export default function LogHoursDialog({
                       />
                     </div>
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeSubmission(submission.userId)}
-                      disabled={submissions.length === 1 || submitting}
-                      className="mt-6 h-10 w-10 p-0 text-muted-foreground hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex sm:flex-col gap-2 sm:gap-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeSubmission(sub.rowId)}
+                        disabled={submissions.length === 1 || submitting}
+                        className="mt-6 h-10 w-10 p-0 text-muted-foreground hover:text-destructive"
+                        aria-label="Remove row">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={submitting}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting || fetchingUsers}>
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Logging...
-                </>
-              ) : (
-                "Log Hours"
-              )}
-            </Button>
-          </DialogFooter>
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between border-t pt-4">
+            <div className="text-sm text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+              <span>
+                Rows: <strong>{submissions.length}</strong>
+              </span>
+              <span>
+                Total Minutes: <strong>{totalMinutes}</strong>
+                {totalMinutes > 0 && (
+                  <strong> = {formatMinutes(totalMinutes)}</strong>
+                )}
+              </span>
+            </div>
+            <DialogFooter className="flex-row gap-2 !mt-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={submitting || savingEvent}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting || fetchingUsers || savingEvent}>
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Logging...
+                  </>
+                ) : (
+                  "Log Hours"
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function UserCombobox({
+  users,
+  value,
+  onChange,
+  disabled,
+  placeholder = "Select user..."
+}: {
+  users: User[];
+  value: string;
+  onChange: (val: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const currentUser = users.find((u) => u.id === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className="w-full justify-between">
+          <span className="flex items-center gap-2 truncate">
+            {currentUser ? (
+              <>
+                <UserIcon className="h-4 w-4 opacity-70" />
+                <span className="truncate" title={currentUser.name}>
+                  {currentUser.name}
+                </span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[320px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search users..." autoFocus />
+          <CommandList>
+            <CommandEmpty>No users found.</CommandEmpty>
+            <CommandGroup>
+              {users.map((user) => (
+                <CommandItem
+                  key={user.id}
+                  value={user.name}
+                  onSelect={() => {
+                    onChange(user.id);
+                    setOpen(false);
+                  }}>
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      user.id === value ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <span className="truncate" title={user.name}>
+                    {user.name}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

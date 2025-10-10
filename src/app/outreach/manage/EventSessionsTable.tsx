@@ -1,13 +1,17 @@
+// React
 import { useState } from "react";
+
 import { toast } from "sonner";
 import { pb, recordToImageUrl } from "@/lib/pbaseClient";
 import { formatMinutes } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { t_pb_OutreachEvent, t_pb_OutreachSession } from "@/lib/types";
-import { Clock, Trash2 } from "lucide-react";
+import type { OutreachEvent, OutreachSession } from "@/lib/types/pocketbase";
+import { deleteSession } from "@/lib/db/outreach";
+import { logger } from "@/lib/logger";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -16,11 +20,13 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+import { Clock, Trash2 } from "lucide-react";
+
 
 interface EventSessionsTableProps {
-  event: t_pb_OutreachEvent;
-  sessions: t_pb_OutreachSession[];
+  event: OutreachEvent;
+  sessions: OutreachSession[];
   onSessionDeleted: () => void;
 }
 
@@ -35,11 +41,12 @@ export default function EventSessionsTable({
   const handleDeleteSession = async (sessionId: string) => {
     setDeletingId(sessionId);
     try {
-      await pb.collection("OutreachSessions").delete(sessionId);
+      await deleteSession(sessionId);
+      logger.warn({ sessionId, eventId: event.id }, "Session deleted from table");
       toast.success("Session deleted successfully");
       onSessionDeleted();
-    } catch (error) {
-      console.error("Error deleting session:", error);
+    } catch (error: any) {
+      logger.error({ sessionId, eventId: event.id, err: error?.message }, "Failed to delete session");
       toast.error("Failed to delete session");
     } finally {
       setDeletingId(null);
@@ -56,9 +63,9 @@ export default function EventSessionsTable({
   }
 
   return (
-    <div className="flex flex-col gap-3 h-full overflow-scroll">
+    <div className="flex flex-col gap-3 h-full">
       <h4 className="font-semibold">Logged Hours</h4>
-      <div className="overflow-y-auto border rounded-md overflow-scroll">
+      <div className="overflow-y-auto border rounded-md overflow-x-hidden">
         <Table>
           <TableHeader>
             <TableRow>

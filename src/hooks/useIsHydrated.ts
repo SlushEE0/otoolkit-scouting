@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 export function useIsHydrated() {
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useRef(false);
 
   useEffect(() => {
-    setIsHydrated(true);
+    isHydrated.current = true;
   }, []);
 
   return isHydrated;

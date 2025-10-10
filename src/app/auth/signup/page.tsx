@@ -1,9 +1,15 @@
 "use client";
 
+import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useIsHydrated } from "@/hooks/useIsHydrated";
+import { useNavbar } from "@/hooks/useNavbar";
+import { loginOAuth, signupEmailPass } from "@/lib/auth";
+import { BaseStates, SignupStates } from "@/lib/states";
+import { logger } from "@/lib/logger";
 
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,24 +20,16 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Image from "next/image";
 import PasswordBlock from "../PasswordBlock";
-
-import { useIsHydrated } from "@/hooks/useIsHydrated";
-import { useNavbar } from "@/hooks/useNavbar";
-import { loginOAuth, signupEmailPass } from "@/lib/auth";
-import { BaseStates, SignupStates } from "@/lib/states";
 import SkeletonSignupForm from "./SkeletonSignupForm";
 
 export default function SignupForm() {
-  const { setRenderOnlyHome, setDefaultShown } = useNavbar();
+  const { doMinimalRendering, setDefaultExpanded } = useNavbar();
 
   const router = useRouter();
   const isHydrated = useIsHydrated();
 
   const redirectToHome = useCallback(() => {
-    console.log("Redirecting ...");
-
     router.prefetch("/");
 
     setTimeout(() => {
@@ -40,40 +38,21 @@ export default function SignupForm() {
     }, 300);
   }, [router]);
 
-  const handleGoogleOAuth = async function () {
-    const loader = toast.loading("Continue on the popup ...");
+  const handleOAuth = async function (type: "discord" | "google") {
+    toast.loading("Continue on the popup ...", { id: "oAuthLoader" });
 
-    const state = await loginOAuth("google");
-
-    toast.dismiss(loader);
+    const state = await loginOAuth(type);
 
     switch (state) {
       case BaseStates.SUCCESS:
-        toast.success("Login successful!");
+        toast.success("Login successful!", { id: "oAuthLoader" });
+        logger.info({ provider: type }, "OAuth signup/login successful");
         redirectToHome();
         break;
       case BaseStates.ERROR:
       default:
-        toast.error("Something went wrong :(");
-        break;
-    }
-  };
-
-  const handleDiscordOAuth = async function () {
-    const loader = toast.loading("Continue on the popup ...");
-
-    const state = await loginOAuth("discord");
-
-    toast.dismiss(loader);
-
-    switch (state) {
-      case BaseStates.SUCCESS:
-        toast.success("Login successful!");
-        redirectToHome();
-        break;
-      case BaseStates.ERROR:
-      default:
-        toast.error("Something went wrong :(");
+        toast.error("Something went wrong :(", { id: "oAuthLoader" });
+        logger.error({ provider: type }, "OAuth signup/login failed");
         break;
     }
   };
@@ -85,15 +64,8 @@ export default function SignupForm() {
       const formData = new FormData(e.currentTarget);
       let name = formData.get("name")?.toString();
       let email = formData.get("email")?.toString();
-      let password1 = formData.get("password1")?.toString();
-      let password2 = formData.get("password2")?.toString();
-
-      console.log("Form submitted with:", {
-        name,
-        email,
-        password1,
-        password2
-      });
+      const password1 = formData.get("password1")?.toString();
+      const password2 = formData.get("password2")?.toString();
 
       if (!name || !email || !password1 || !password2) {
         toast.error("Please fill in all fields.");
@@ -104,44 +76,51 @@ export default function SignupForm() {
       email = email.trim();
 
       toast.dismiss();
-      const loader = toast.loading("Creating account...");
+      toast.loading("Creating account...", { id: "aLoader" });
 
       let state = SignupStates.ERR_UNKNOWN;
       state = await signupEmailPass(email, password1, password2, name);
 
-      toast.dismiss(loader);
-
       switch (state) {
         case SignupStates.SUCCESS:
-          toast.success("Account created successfully!");
+          toast.success("Account created successfully!", { id: "aLoader" });
+          logger.info({ email }, "User signup successful");
           redirectToHome();
           break;
         case SignupStates.ERR_EMAIL_NOT_PROVIDED:
-          toast.error("Email is required.");
+          toast.error("Email is required.", { id: "aLoader" });
           break;
         case SignupStates.ERR_PASSWORD_NOT_PROVIDED:
-          toast.error("Password is required.");
+          toast.error("Password is required.", { id: "aLoader" });
           break;
         case SignupStates.ERR_NAME_NOT_PROVIDED:
-          toast.error("Display name is required.");
+          toast.error("Display name is required.", { id: "aLoader" });
           break;
         case SignupStates.ERR_INVALID_EMAIL:
-          toast.error("Please enter a valid email address.");
+          toast.error("Please enter a valid email address.", { id: "aLoader" });
           break;
         case SignupStates.ERR_INVALID_NAME:
-          toast.error("Display name can only contain letters and numbers.");
+          toast.error("Display name can only contain letters and numbers.", {
+            id: "aLoader"
+          });
           break;
         case SignupStates.ERR_NAME_TOO_SHORT:
-          toast.error("Display name must be at least 3 characters long.");
+          toast.error("Display name must be at least 3 characters long.", {
+            id: "aLoader"
+          });
           break;
         case SignupStates.ERR_PASSWORD_TOO_SHORT:
-          toast.error("Password must be at least 8 characters long.");
+          toast.error("Password must be at least 8 characters long.", {
+            id: "aLoader"
+          });
           break;
         case SignupStates.ERR_PASSWORDS_DONT_MATCH:
-          toast.error("Passwords do not match.");
+          toast.error("Passwords do not match.", { id: "aLoader" });
           break;
         case SignupStates.ERR_ALREADY_EXISTS:
-          toast.error("An account with this email already exists.");
+          toast.error("An account with this email already exists.", {
+            id: "aLoader"
+          });
           toast.info(
             "Looks like you have an account. Do you want to log in instead?",
             {
@@ -157,7 +136,10 @@ export default function SignupForm() {
           break;
         case SignupStates.ERR_UNKNOWN:
         default:
-          toast.error("Something went wrong. Please try again later.");
+          toast.error("Something went wrong. Please try again later.", {
+            id: "aLoader"
+          });
+          logger.error({ email }, "Unknown signup error");
           break;
       }
     },
@@ -165,14 +147,14 @@ export default function SignupForm() {
   );
 
   useEffect(() => {
-    setRenderOnlyHome(true);
-    setDefaultShown(false);
+    doMinimalRendering(true);
+    setDefaultExpanded(false);
 
     return () => {
-      setRenderOnlyHome(false);
-      setDefaultShown(true);
+      doMinimalRendering(false);
+      setDefaultExpanded(true);
     };
-  }, [handleSubmit, setDefaultShown, setRenderOnlyHome]);
+  }, [setDefaultExpanded, doMinimalRendering]);
 
   return (
     <div className="bg-background flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
@@ -193,7 +175,7 @@ export default function SignupForm() {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={handleGoogleOAuth}>
+                    onClick={handleOAuth.bind(null, "google")}>
                     <Image
                       src="/google.svg"
                       alt="Google Logo"
@@ -206,7 +188,7 @@ export default function SignupForm() {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={handleDiscordOAuth}>
+                    onClick={handleOAuth.bind(null, "discord")}>
                     <Image
                       src="/discord.svg"
                       alt="Discord Logo"

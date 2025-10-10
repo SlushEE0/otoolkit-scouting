@@ -3,83 +3,61 @@
 import { useEffect, useState, useCallback } from "react";
 import useSWR from "swr";
 
-import { pb } from "@/lib/pbaseClient";
+import { fetchEvents, fetchSessionsForEvent } from "@/lib/db/outreach";
+
 import { useNavbar } from "@/hooks/useNavbar";
 import { useIsHydrated } from "@/hooks/useIsHydrated";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { t_pb_OutreachEvent, t_pb_OutreachSession } from "@/lib/types";
+import type { OutreachEvent, OutreachSession } from "@/lib/types/pocketbase";
 
-import { Calendar } from "lucide-react";
 import Loader from "@/components/Loader";
 import CreateEventDialog from "./CreateEventDialog";
 import EventsList from "./EventsList";
 import EventDetails from "./EventDetails";
 
+import { Calendar } from "lucide-react";
+
 export default function ManageEventsPage() {
-  const { setDefaultShown } = useNavbar();
+  const { setDefaultExpanded } = useNavbar();
   const isHydrated = useIsHydrated();
   const isMobile = useIsMobile();
 
-  const [selectedEvent, setSelectedEvent] = useState<t_pb_OutreachEvent | null>(
+  const [selectedEvent, setSelectedEvent] = useState<OutreachEvent | null>(
     null
   );
 
-  // Fetch events
   const {
     data: events,
     error: eventsError,
     mutate: mutateEvents
-  } = useSWR("outreach-events", async () => {
-    const response = await pb
-      .collection("OutreachEvents")
-      .getFullList<t_pb_OutreachEvent>({
-        sort: "-created"
-      });
-    return response;
-  });
+  } = useSWR("outreach-events", fetchEvents);
 
-  // Fetch sessions for selected event
   const { data: sessions, mutate: mutateSessions } = useSWR(
     selectedEvent ? `outreach-sessions-${selectedEvent.id}` : null,
-    async () => {
-      if (!selectedEvent) return [];
-      const response = await pb
-        .collection("OutreachSessions")
-        .getFullList<t_pb_OutreachSession>({
-          filter: `event = "${selectedEvent.id}"`,
-          expand: "user",
-          sort: "-created"
-        });
-      return response;
-    }
+    () => (selectedEvent ? fetchSessionsForEvent(selectedEvent.id) : [])
   );
 
-  const handleEventCreated = useCallback(() => {
-    mutateEvents();
-  }, [mutateEvents]);
-
-  const handleHoursLogged = useCallback(() => {
-    mutateSessions();
-  }, [mutateSessions]);
-
-  const handleSessionDeleted = useCallback(() => {
-    mutateSessions();
-  }, [mutateSessions]);
-
+  const handleEventCreated = useCallback(() => mutateEvents(), [mutateEvents]);
+  const handleHoursLogged = useCallback(
+    () => mutateSessions(),
+    [mutateSessions]
+  );
+  const handleSessionDeleted = useCallback(
+    () => mutateSessions(),
+    [mutateSessions]
+  );
   const handleEventDeleted = useCallback(() => {
     mutateEvents();
-    if (selectedEvent) {
-      setSelectedEvent(null);
-    }
+    if (selectedEvent) setSelectedEvent(null);
   }, [mutateEvents, selectedEvent]);
 
-  const handleEventSelect = useCallback((event: t_pb_OutreachEvent) => {
+  const handleEventSelect = useCallback((event: OutreachEvent) => {
     setSelectedEvent(event);
   }, []);
 
   useEffect(() => {
-    setDefaultShown(false);
-  }, [setDefaultShown]);
+    setDefaultExpanded(false);
+  }, [setDefaultExpanded]);
 
   if (!isHydrated) {
     return (
@@ -105,13 +83,12 @@ export default function ManageEventsPage() {
   }
 
   return (
-    <div className={`p-4 flex flex-col`}>
-      {/* Header */}
+    <div className="p-4 flex flex-col">
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <Calendar className={`${isMobile ? "h-5 w-5" : "h-6 w-6"}`} />
+              <Calendar className={isMobile ? "h-5 w-5" : "h-6 w-6"} />
               <h1 className={`${isMobile ? "text-2xl" : "text-3xl"} font-bold`}>
                 Manage Events
               </h1>
@@ -136,10 +113,9 @@ export default function ManageEventsPage() {
           onHoursLogged={handleHoursLogged}
           isMobile={false}
         />
-
         <EventDetails
           selectedEvent={selectedEvent}
-          sessions={sessions}
+          sessions={sessions || []}
           onHoursLogged={handleHoursLogged}
           onSessionDeleted={handleSessionDeleted}
         />

@@ -3,19 +3,19 @@ import { useEffect } from "react";
 import { useNavbar } from "@/hooks/useNavbar";
 
 type Props = {
-  setDefaultShown?: boolean;
-  setRenderOnlyHome?: boolean;
+  setDefaultExpanded?: boolean;
+  doMinimalRendering?: boolean;
 };
 
 export function NavbarServerConfig({ ...props }: Props) {
   const navbar = useNavbar();
   useEffect(() => {
-    props.setDefaultShown != undefined
-      ? navbar.setDefaultShown(props.setDefaultShown)
-      : null;
-    props.setRenderOnlyHome != undefined
-      ? navbar.setRenderOnlyHome(props.setRenderOnlyHome)
-      : null;
-  }, []);
+    if (props.setDefaultExpanded !== undefined) {
+      navbar.setDefaultExpanded(props.setDefaultExpanded);
+    }
+    if (props.doMinimalRendering !== undefined) {
+      navbar.doMinimalRendering(props.doMinimalRendering);
+    }
+  }, [props.setDefaultExpanded, props.doMinimalRendering]);
   return null;
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
+
+import { Eye, EyeOff } from "lucide-react";
 
 export default function PasswordBlock(props: any) {
   const [passwordVisible, SETpasswordVisible] = useState(false);

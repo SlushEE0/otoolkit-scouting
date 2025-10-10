@@ -2,9 +2,10 @@ import { pb } from "./pbaseClient";
 import { BaseStates } from "./states";
 import { setPocketbaseCookie } from "./pbaseServer";
 
-import { OAuthProvider } from "./types";
+import { pb_OAuthProvider } from "./types/pocketbase";
 import { SimpleLoginStates, SignupStates } from "./states";
 import { newUser } from "./db/user";
+import { logger } from "./logger";
 
 export async function loginEmailPass(
   email: string,
@@ -15,9 +16,9 @@ export async function loginEmailPass(
 
   email = email.trim();
 
-  const validateEmail = (email: string) => {
+  const validateEmail = (value: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(String(email).toLowerCase());
+    return re.test(String(value).toLowerCase());
   };
 
   if (!validateEmail(email)) {
@@ -54,7 +55,7 @@ export async function loginEmailPass(
   }
 }
 
-export async function loginOAuth(provider: OAuthProvider) {
+export async function loginOAuth(provider: pb_OAuthProvider) {
   const authData = await pb.collection("users").authWithOAuth2({
     provider,
     createData: {
@@ -79,14 +80,14 @@ export async function signupEmailPass(
   if (!password2) return SignupStates.ERR_PASSWORD_NOT_PROVIDED;
   if (!name) return SignupStates.ERR_NAME_NOT_PROVIDED;
 
-  const validateEmail = (email: string) => {
+  const validateEmail = (value: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(String(email).toLowerCase());
+    return re.test(String(value).toLowerCase());
   };
 
-  const validateName = (name: string) => {
+  const validateName = (value: string) => {
     const re = /^[A-Za-z0-9]+$/;
-    return re.test(String(name).toLowerCase());
+    return re.test(String(value).toLowerCase());
   };
 
   if (!validateEmail(email)) {
@@ -115,6 +116,7 @@ export async function signupEmailPass(
     if (result[0] === "ALREADY_EXISTS") {
       return SignupStates.ERR_ALREADY_EXISTS;
     }
+    logger.error({ email, code: result[0] }, "Unknown signup error");
     return SignupStates.ERR_UNKNOWN;
   }
 
@@ -134,5 +136,5 @@ async function storeServerCookie() {
 export function logout() {
   pb.authStore.clear();
   setPocketbaseCookie("");
-  window.location.reload();
+  window?.location.reload();
 }

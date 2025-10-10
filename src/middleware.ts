@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { execPocketbase } from "./lib/pbaseServer";
 
-const adminOnlyRoutes = ["/admin", "/testing", "/outreach/manage-events"];
+const adminOnlyRoutes = ["/admin", "/testing", "/outreach/manage"];
 const authedOnlyRoutes = [
   "/dashboard",
   "/profile",
   "/settings",
   "/outreach",
-  "/build"
+  "/build",
+  "/scouting"
 ];
 // const publicPaths = ["/auth/unauthorized", "/auth/login", "/auth/signup"];
 

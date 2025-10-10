@@ -2,6 +2,7 @@
 
 import { faker } from "@faker-js/faker";
 import { execPocketbase as execPocketbase } from "@/lib/pbaseServer";
+import { logger } from "@/lib/logger";
 
 export async function generateFakeUser() {
   return {
@@ -40,7 +41,7 @@ export async function populateFakeUsers(count: number) {
           avatar: file
         });
       } catch (error) {
-        console.error("Error creating user:", error);
+        logger.error({ err: (error as any)?.message }, "Error creating user");
       }
     }
   });
@@ -69,7 +70,7 @@ export async function populateFakeOutreachSessions(count: number) {
           event: "9a6i619u8dqp344" // Use a fixed event ID for now
         });
       } catch (error) {
-        console.error("Error creating outreach session:", error);
+        logger.error({ err: (error as any)?.message }, "Error creating outreach session");
       }
     }
   });

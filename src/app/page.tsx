@@ -11,53 +11,52 @@ export const metadata: Metadata = {
     "Outreach tracking, scouting, and team operations for FRC Team Optix 3749."
 };
 
+const features = [
+  {
+    title: "Track Outreach Hours",
+    body: "Log events, record minutes, and see totals update right away."
+  },
+  {
+    title: "Run Scouting",
+    body: "Collect match and pit data fast on phones. Share findings quickly."
+  },
+  {
+    title: "See Progress",
+    body: "Simple charts show outreach impact and robot performance trends."
+  },
+  {
+    title: "Manage Sessions",
+    body: "Approve, adjust, and audit participation with clear histories."
+  },
+  {
+    title: "Built for Speed",
+    body: "Fast UI, instant feedback, dark mode first, mobile friendly."
+  },
+  {
+    title: "Role Aware",
+    body: "Admins manage settings. Members focus on tasks. Guests see basics."
+  }
+];
+
+const valuePoints = [
+  {
+    h: "Faster Decisions",
+    p: "Scouting data turns into insights you can act on between matches."
+  },
+  {
+    h: "Less Spreadsheet Chaos",
+    p: "Central place for outreach + scouting. No more scattered tabs."
+  },
+  {
+    h: "Student Owned",
+    p: "Built by the team. Easy to extend for new seasons."
+  }
+];
+
 export default function Home() {
-  const features = [
-    {
-      title: "Track Outreach Hours",
-      body: "Log events, record minutes, and see totals update right away."
-    },
-    {
-      title: "Run Scouting",
-      body: "Collect match and pit data fast on phones. Share findings quickly."
-    },
-    {
-      title: "See Progress",
-      body: "Simple charts show outreach impact and robot performance trends."
-    },
-    {
-      title: "Manage Sessions",
-      body: "Approve, adjust, and audit participation with clear histories."
-    },
-    {
-      title: "Built for Speed",
-      body: "Fast UI, instant feedback, dark mode first, mobile friendly."
-    },
-    {
-      title: "Role Aware",
-      body: "Admins manage settings. Members focus on tasks. Guests see basics."
-    }
-  ];
-
-  const valuePoints = [
-    {
-      h: "Faster Decisions",
-      p: "Scouting data turns into insights you can act on between matches."
-    },
-    {
-      h: "Less Spreadsheet Chaos",
-      p: "Central place for outreach + scouting. No more scattered tabs."
-    },
-    {
-      h: "Student Owned",
-      p: "Built by the team. Easy to extend for new seasons."
-    }
-  ];
-
   return (
-    <main className="space-y-32 pb-40">
-      <NavbarServerConfig setDefaultShown={false} />
-      <NavbarTip />
+    <main className="space-y-32 pb-14">
+      <NavbarServerConfig setDefaultExpanded={false} />
 
       <section className="pt-32 container mx-auto px-6 max-w-5xl flex flex-col items-center text-center gap-8">
         <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-br from-primary to-chart-2 bg-clip-text text-transparent">
@@ -225,12 +224,6 @@ export default function Home() {
         <nav className="flex flex-wrap gap-4">
           <Link href="#" className="hover:text-foreground transition">
             Features
-          </Link>
-          <Link href="#" className="hover:text-foreground transition">
-            Value
-          </Link>
-          <Link href="#" className="hover:text-foreground transition">
-            Flow
           </Link>
           <Link href="#" className="hover:text-foreground transition">
             Contribute

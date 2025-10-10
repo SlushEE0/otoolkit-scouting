@@ -11,9 +11,14 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavbar } from "@/hooks/useNavbar";
 import { recordToImageUrl } from "@/lib/pbaseClient";
 import { logout } from "@/lib/auth";
-import type { t_pb_User } from "@/lib/types";
 
-import { User, Clock, Menu, SearchCode, LogOut } from "lucide-react";
+import {
+  User as UserIcon,
+  Clock,
+  Menu,
+  SearchCode,
+  LogOut
+} from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,47 +31,57 @@ import {
   DrawerTitle,
   DrawerTrigger
 } from "@/components/ui/drawer";
+
 import NavbarSkeleton from "./skeletons/NavbarSkeleton";
 import { Separator } from "@/components/ui/separator";
+import { User } from "@/lib/types/pocketbase";
 
-const NAV_ITEMS = [
+type NavItem = {
+  showInMinimal?: boolean;
+  icon?: React.ReactNode;
+  label: string;
+  url: string;
+  msg?: string;
+  func?: () => boolean;
+};
+
+const PROFILE_ITEM: NavItem = {
+  showInMinimal: true,
+  label: "Profile",
+  url: "/user/profile",
+  msg: "Going to Profile",
+  func: () => {
+    toast.warning("Under Construction");
+    return false;
+  }
+};
+
+const LOGIN_ITEM: NavItem = {
+  icon: <UserIcon className="h-5 w-5" />,
+  label: "Log In",
+  url: "/auth/login",
+  msg: "Going to Login"
+};
+
+const NAV_ITEMS: NavItem[] = [
   {
-    onlyHomePersist: true,
-    icon: <User className="h-5 w-5" />,
+    showInMinimal: true,
+    icon: <UserIcon className="h-5 w-5" />,
     label: "Home",
     url: "/",
-    msg: "",
-    func: () => {
-      toast.warning("Under Construction");
-      return false;
-    }
+    msg: ""
   },
   {
     icon: <SearchCode className="h-5 w-5" />,
     label: "Scouting",
     url: "/scouting",
-    msg: "Lets go scout!",
-    func: () => {
-      toast.warning("Under Construction");
-      return false;
-    }
+    msg: "Lets go scout!"
   },
   {
     icon: <Clock className="h-5 w-5" />,
     label: "Outreach",
     url: "/outreach",
     msg: "Going to the Outreach Sheet"
-  },
-  {
-    onlyHomePersist: true,
-    icon: <LogOut className="h-5 w-5" />,
-    label: "Sign Out",
-    url: "/",
-    msg: "Signing Out",
-    func: () => {
-      logout();
-      return false;
-    }
   }
   // {
   //   icon: <Settings className="h-5 w-5" />,
@@ -76,28 +91,27 @@ const NAV_ITEMS = [
   // }
 ];
 
-const PROFILE_ITEM = {
-  url: "/user/profile",
-  msg: "Going to Profile",
-  func: () => {
-    toast.warning("Under Construction");
-    return false;
+const USER_ITEMS: NavItem[] = [
+  {
+    showInMinimal: true,
+    icon: <LogOut className="h-5 w-5" />,
+    label: "Sign Out",
+    url: "/",
+    msg: "Signing Out",
+    func: () => {
+      logout();
+      return false;
+    }
   }
-};
-
-const LOGIN_ITEM = {
-  url: "/auth/login",
-  msg: "Going to Login"
-};
+];
 
 export type NavItems = typeof NAV_ITEMS;
 
 type ChildProps = {
-  user: t_pb_User | null;
+  user: User | null;
   navItems: typeof NAV_ITEMS;
   onNavigate: (url: { url: string; msg?: string }) => void;
-  defaultToShown: boolean;
-};
+} & ReturnType<typeof useNavbar>;
 
 export default function Navbar({}) {
   const router = useRouter();
@@ -110,8 +124,8 @@ export default function Navbar({}) {
 
   if (!isHydrated) return null; //<NavbarSkeleton navItems={allItems} />;
 
-  const navItems = state.renderOnlyHome
-    ? NAV_ITEMS.filter((item) => item.onlyHomePersist)
+  const navItems = state.renderMinimal
+    ? NAV_ITEMS.filter((item) => item.showInMinimal)
     : NAV_ITEMS;
 
   const onNavigate = function ({
@@ -129,7 +143,7 @@ export default function Navbar({}) {
     router.push(url);
   };
 
-  if (state.forcedDisable) return;
+  if (state.isDisabled) return;
 
   return isSmallScreen ? (
     <Mobile {...state} {...{ navItems, user, onNavigate }} />
@@ -138,8 +152,18 @@ export default function Navbar({}) {
   );
 }
 
-function Mobile({ navItems, user, onNavigate }: ChildProps) {
+function Mobile({
+  navItems,
+  user,
+  mobileNavbarSide,
+  onNavigate,
+  setExpanded
+}: ChildProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    setExpanded(isOpen);
+  }, [isOpen, setExpanded]);
 
   const handleNavigation = (item: {
     url: string;
@@ -156,7 +180,10 @@ function Mobile({ navItems, user, onNavigate }: ChildProps) {
         <Button
           variant="outline"
           size="icon"
-          className="fixed top-4 right-4 z-50 h-10 w-10 rounded-lg shadow-lg bg-card/95 backdrop-blur-xl border border-border hover:bg-muted">
+          className={
+            `fixed top-4 z-50 h-10 w-10 rounded-lg shadow-lg bg-card/95 backdrop-blur-xl border border-border hover:bg-muted` +
+            (mobileNavbarSide === "left" ? " left-4" : " right-4")
+          }>
           <Menu className="h-5 w-5" />
           <span className="sr-only">Open menu</span>
         </Button>
@@ -203,8 +230,8 @@ function Mobile({ navItems, user, onNavigate }: ChildProps) {
                 onClick={() =>
                   handleNavigation({
                     url: item.url,
-                    msg: item?.msg,
-                    func: item?.func
+                    msg: item.msg,
+                    func: item.func
                   })
                 }>
                 <div className="flex items-center space-x-3">
@@ -216,24 +243,32 @@ function Mobile({ navItems, user, onNavigate }: ChildProps) {
 
             <Separator className="my-4" />
 
-            {/* Account/Login Button */}
             {user ? (
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-left h-12 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                onClick={() => handleNavigation(PROFILE_ITEM)}>
-                <div className="flex items-center space-x-3">
-                  <User className="h-5 w-5" />
-                  <span className="text-sm font-medium">Account</span>
-                </div>
-              </Button>
+              USER_ITEMS.map((item, index) => (
+                <Button
+                  key={index}
+                  variant="ghost"
+                  className="w-full justify-start text-left h-12 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  onClick={() =>
+                    handleNavigation({
+                      url: item.url,
+                      msg: item?.msg,
+                      func: item?.func
+                    })
+                  }>
+                  <div className="flex items-center space-x-3">
+                    {item.icon}
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </div>
+                </Button>
+              ))
             ) : (
               <Button
                 variant="default"
                 className="w-full justify-start text-left h-12"
                 onClick={() => handleNavigation(LOGIN_ITEM)}>
                 <div className="flex items-center space-x-3">
-                  <User className="h-5 w-5" />
+                  <UserIcon className="h-5 w-5" />
                   <span className="text-sm font-medium">Log In</span>
                 </div>
               </Button>
@@ -245,9 +280,19 @@ function Mobile({ navItems, user, onNavigate }: ChildProps) {
   );
 }
 
-function Desktop({ navItems, user, onNavigate, defaultToShown }: ChildProps) {
+function Desktop({
+  navItems,
+  user,
+  onNavigate,
+  setExpanded,
+  defaultExpanded: defaultToShown
+}: ChildProps) {
   const [isVisible, setIsVisible] = useState(true);
   const navbarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setExpanded(isVisible);
+  }, [isVisible, setExpanded]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -315,8 +360,8 @@ function Desktop({ navItems, user, onNavigate, defaultToShown }: ChildProps) {
                 key={index}
                 onClick={onNavigate.bind(null, {
                   url: item.url,
-                  msg: item?.msg,
-                  func: item?.func
+                  msg: item.msg,
+                  func: item.func
                 })}>
                 <div className="size-4 transition-all duration-300 ease-in-out">
                   {item.icon}
@@ -326,6 +371,27 @@ function Desktop({ navItems, user, onNavigate, defaultToShown }: ChildProps) {
                 </span>
               </Button>
             ))}
+
+            {user &&
+              USER_ITEMS.map((item, index) => (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-all duration-300 ease-in-out opacity-100"
+                  key={index}
+                  onClick={onNavigate.bind(null, {
+                    url: item.url,
+                    msg: item.msg,
+                    func: item.func
+                  })}>
+                  <div className="size-4 transition-all duration-300 ease-in-out">
+                    {item.icon}
+                  </div>
+                  <span className="text-sm font-medium transition-all duration-300 ease-in-out">
+                    {item.label}
+                  </span>
+                </Button>
+              ))}
 
             {user ? (
               <div className="flex items-center space-x-3 pl-6 ml-2 border-l border-border">
@@ -361,7 +427,7 @@ function Desktop({ navItems, user, onNavigate, defaultToShown }: ChildProps) {
                   size="sm"
                   className="flex items-center space-x-3"
                   onClick={onNavigate.bind(null, LOGIN_ITEM)}>
-                  <User className="h-4 w-4" />
+                  <UserIcon className="h-4 w-4" />
                   <span className="text-sm font-medium">Log In</span>
                 </Button>
               </div>

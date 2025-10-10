@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 
 import { registerAuthCallback } from "@/lib/db/user";
-import type { t_pb_User } from "@/lib/types";
+import type { User } from "@/lib/types/pocketbase";
 
 export function useUser() {
-  const [user, setUser] = useState<t_pb_User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     return registerAuthCallback(setUser);

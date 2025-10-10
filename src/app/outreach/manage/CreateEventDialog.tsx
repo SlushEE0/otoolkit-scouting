@@ -1,7 +1,6 @@
+// React
 import { useState } from "react";
-import { toast } from "sonner";
-import { pb } from "@/lib/pbaseClient";
-import { Plus } from "lucide-react";
+// UI
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +12,13 @@ import {
   DialogTrigger,
   DialogFooter
 } from "@/components/ui/dialog";
+// Data
+import { createEvent } from "@/lib/db/outreach";
+// Feedback
+import { toast } from "sonner";
+// Icons
+import { Plus } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface CreateEventDialogProps {
   onEventCreated: () => void;
@@ -37,17 +43,18 @@ export default function CreateEventDialog({
 
     setLoading(true);
     try {
-      await pb.collection("OutreachEvents").create({
+      const created = await createEvent({
         name: formData.name,
         date: formData.date
       });
 
+      logger.info({ eventId: created.id }, "Event created via dialog");
       toast.success("Event created successfully");
       setFormData({ name: "", date: "" });
       setOpen(false);
       onEventCreated();
-    } catch (error) {
-      console.error("Error creating event:", error);
+    } catch (error: any) {
+      logger.error({ err: error?.message }, "Error creating event");
       toast.error("Failed to create event");
     } finally {
       setLoading(false);
@@ -95,7 +102,8 @@ export default function CreateEventDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}>
+              onClick={() => setOpen(false)}
+              disabled={loading}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>

@@ -1,17 +1,19 @@
 import { toast } from "sonner";
-import { pb } from "@/lib/pbaseClient";
-import type { t_pb_OutreachEvent } from "@/lib/types";
+import { deleteEvent } from "@/lib/db/outreach";
+import type { OutreachEvent } from "@/lib/types/pocketbase";
+import { logger } from "@/lib/logger";
+
 import { Calendar, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import LogHoursDialog from "./LogHoursDialog";
 import Loader from "@/components/Loader";
+import LogHoursDialog from "./LogHoursDialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface EventsListProps {
-  events: t_pb_OutreachEvent[] | undefined;
-  selectedEvent: t_pb_OutreachEvent | null;
-  onEventSelect: (event: t_pb_OutreachEvent) => void;
+  events: OutreachEvent[] | undefined;
+  selectedEvent: OutreachEvent | null;
+  onEventSelect: (event: OutreachEvent) => void;
   onEventDeleted: () => void;
   onHoursLogged: () => void;
   isMobile?: boolean;
@@ -35,11 +37,12 @@ export default function EventsList({
     }
 
     try {
-      await pb.collection("OutreachEvents").delete(eventId);
+      await deleteEvent(eventId);
+      logger.warn({ eventId }, "Event deleted via list");
       toast.success("Event deleted successfully");
       onEventDeleted();
-    } catch (error) {
-      console.error("Error deleting event:", error);
+    } catch (error: any) {
+      logger.error({ eventId, err: error?.message }, "Failed to delete event");
       toast.error("Failed to delete event");
     }
   };

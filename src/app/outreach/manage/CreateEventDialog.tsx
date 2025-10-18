@@ -19,6 +19,8 @@ import { toast } from "sonner";
 // Icons
 import { Plus } from "lucide-react";
 import { logger } from "@/lib/logger";
+import { ErrorToString } from "@/lib/states";
+import { PBBrowser } from "@/lib/pb";
 
 interface CreateEventDialogProps {
   onEventCreated: () => void;
@@ -43,10 +45,17 @@ export default function CreateEventDialog({
 
     setLoading(true);
     try {
-      const created = await createEvent({
+      const [error, created] = await createEvent({
         name: formData.name,
         date: formData.date
-      });
+      }, PBBrowser.getClient());
+
+      if (error || !created) {
+        const message = error ? ErrorToString[error] ?? error : "Unknown error";
+        logger.error({ err: message }, "Error creating event");
+        toast.error(`Failed to create event: ${message}`);
+        return;
+      }
 
       logger.info({ eventId: created.id }, "Event created via dialog");
       toast.success("Event created successfully");

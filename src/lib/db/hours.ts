@@ -1,53 +1,72 @@
-import type { RecordModel } from "pocketbase";
-import { pb } from "../pbaseClient";
+import type { OutreachEvent, OutreachSession } from "@/lib/types/pocketbase";
+import { type PBClientBase } from "../pb";
+
 import { BaseStates } from "../states";
 
 let ManualHoursEventID = "";
 
 export async function manualModifyOutreachHours(
   userId: string,
-  deltaMinutes: number
+  deltaMinutes: number,
+  client: PBClientBase
 ) {
   if (!ManualHoursEventID) {
-    let manualHoursEvent: RecordModel | null = null;
+    const [lookupError, manualHoursEvent] =
+      await client.getFirstListItem<OutreachEvent>(
+        "OutreachEvents",
+        `name="ManualHours"`
+      );
 
-    try {
-      manualHoursEvent = await pb
-        .collection("OutreachEvents")
-        .getFirstListItem(`name="ManualHours"`);
-    } catch {
-      try {
-        manualHoursEvent = await pb.collection("OutreachEvents").create({
+    if (lookupError && lookupError !== "01x404") {
+      return BaseStates.ERROR;
+    }
+
+    if (!manualHoursEvent) {
+      const [createError, createdEvent] =
+        await client.createOne<OutreachEvent>("OutreachEvents", {
           name: "ManualHours"
         });
-      } catch {
+
+      if (createError || !createdEvent) {
         return BaseStates.ERROR;
       }
-    } finally {
-      if (!manualHoursEvent) return BaseStates.ERROR;
 
+      ManualHoursEventID = createdEvent.id;
+    } else {
       ManualHoursEventID = manualHoursEvent.id;
     }
   }
 
-  try {
-    const currentManualAddition = await pb
-      .collection("OutreachSessions")
-      .getFirstListItem(`event="${ManualHoursEventID}"&&user="${userId}"`);
+  const [sessionError, currentManualAddition] =
+    await client.getFirstListItem<OutreachSession>(
+      "OutreachSessions",
+      `event="${ManualHoursEventID}"&&user="${userId}"`
+    );
 
-    await pb.collection("OutreachSessions").update(currentManualAddition.id, {
-      minutes: currentManualAddition.minutes + deltaMinutes
-    });
-  } catch {
-    try {
-      await pb.collection("OutreachSessions").create({
+  if (!sessionError && currentManualAddition) {
+    const [updateError] = await client.updateOne<OutreachSession>(
+      "OutreachSessions",
+      currentManualAddition.id,
+      {
+        minutes: currentManualAddition.minutes + deltaMinutes
+      }
+    );
+
+    if (updateError) return BaseStates.ERROR;
+  } else if (sessionError === "01x404") {
+    const [createError] = await client.createOne<OutreachSession>(
+      "OutreachSessions",
+      {
         event: ManualHoursEventID,
         user: userId,
         minutes: deltaMinutes
-      });
-    } catch {
-      return BaseStates.ERROR;
-    }
+      }
+    );
+
+    if (createError) return BaseStates.ERROR;
+  } else if (sessionError) {
+    return BaseStates.ERROR;
   }
+
   return BaseStates.SUCCESS;
 }

@@ -87,8 +87,8 @@ export interface DexieScoutingSubmission {
 }
 
 export interface SelectOption {
-  value: number;
   name: string;
+  value: number;
 }
 
 export interface FormFieldProps {

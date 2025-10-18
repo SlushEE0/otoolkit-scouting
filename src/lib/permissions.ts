@@ -1,3 +1,4 @@
+import { PBClientBase } from "./pb";
 import { User } from "./types/pocketbase";
 
 type Permission = (typeof ROLES)[User["role"]][number];
@@ -17,4 +18,9 @@ export function hasPermission(userRole: User["role"], flag: Permission) {
 
   if ((ROLES[userRole] as readonly Permission[]).includes(flag)) return true;
   return false;
+}
+
+export function getUserRole(client: PBClientBase): User["role"] | null {
+  const role = client.authStore.record?.role || null;
+  return role;
 }

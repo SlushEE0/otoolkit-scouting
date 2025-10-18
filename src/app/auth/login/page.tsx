@@ -163,7 +163,7 @@ export default function LoginForm() {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={handleOAuth.bind(null, "google")}>\
+                    onClick={handleOAuth.bind(null, "google")}>
                     <Image
                       src="/google.svg"
                       alt="Google Logo"
@@ -176,7 +176,7 @@ export default function LoginForm() {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={handleOAuth.bind(null, "discord")}>\
+                    onClick={handleOAuth.bind(null, "discord")}>
                     <Image
                       src="/discord.svg"
                       alt="Discord Logo"

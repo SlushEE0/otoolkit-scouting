@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
+import { PBBrowser } from "@/lib/pb";
 import { useFormContext, Controller } from "react-hook-form";
+
 import {
   Select,
   SelectContent,
@@ -10,6 +12,7 @@ import {
 import { BaseField } from "./BaseField";
 import { SelectQuestionConfig, SelectOption } from "@/lib/types/scouting";
 import { fetchSelectOptions } from "@/lib/db/scouting";
+import { ErrorToString } from "@/lib/states";
 
 interface SelectFieldProps {
   question: SelectQuestionConfig;
@@ -28,8 +31,16 @@ export function SelectField({ question }: SelectFieldProps) {
     const loadOptions = async () => {
       setIsLoading(true);
       try {
-        const teamOptions = await fetchSelectOptions(question.select_key);
-        setOptions(teamOptions);
+        const [error, teamOptions] = await fetchSelectOptions(
+          question.select_key,
+          PBBrowser.getClient()
+        );
+
+        if (error) {
+          throw new Error(ErrorToString[error] ?? error);
+        }
+
+        setOptions(teamOptions ?? []);
       } catch (error) {
         console.error("Failed to load select options:", error);
       } finally {

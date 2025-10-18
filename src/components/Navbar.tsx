@@ -9,7 +9,7 @@ import { useUser } from "@/hooks/useUser";
 import { useIsHydrated } from "@/hooks/useIsHydrated";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavbar } from "@/hooks/useNavbar";
-import { recordToImageUrl } from "@/lib/pbaseClient";
+import { recordToImageUrl } from "@/lib/pb";
 import { logout } from "@/lib/auth";
 
 import {

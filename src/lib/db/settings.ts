@@ -1,27 +1,18 @@
-"use server";
-
-import { cache } from "react";
-import { execPocketbase } from "../pbaseServer";
 import { logger } from "../logger";
 
-export const getOutreachMinutesCutoff = cache(async () => {
-  const outreachMinutesCutoff = await execPocketbase(async (pb) => {
-    let outreachMinutesCutoff = 900;
-    try {
-      const record = await pb
-        .collection("Settings")
-        .getFirstListItem("key='OutreachMinsCutoff'");
+import { type PBClientBase } from "../pb";
 
-      outreachMinutesCutoff = parseInt(record.value) || 900;
-    } catch (e: any) {
-      logger.error(
-        { err: e?.message },
-        "[DB: Settings] Failed to fetch OutreachMinsCutoff, defaulting to 900"
-      );
-    }
+export async function getOutreachMinutesCutoff(client: PBClientBase) {
+  const [error, record] = await client.getFirstListItem(
+    "Settings",
+    "key='OutreachMinsCutoff'"
+  );
 
-    return outreachMinutesCutoff;
-  });
+  if (error) {
+    logger.error({ key: "OutreachMinsCutoff", code: error }, "Failed to fetch outreach minutes cutoff");
+    return 900;
+  }
 
+  const outreachMinutesCutoff = parseInt(record.value) || 900;
   return outreachMinutesCutoff;
-});
+}

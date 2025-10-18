@@ -5,6 +5,7 @@ import { listAllUsers } from "@/lib/db/user";
 import { formatMinutes, cn } from "@/lib/utils";
 import type { OutreachEvent, User } from "@/lib/types/pocketbase";
 import { logger } from "@/lib/logger";
+import { ErrorToString } from "@/lib/states";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ import {
   Save,
   Calendar
 } from "lucide-react";
+import { PBBrowser } from "@/lib/pb";
 
 interface LogHoursDialogProps {
   event: OutreachEvent;
@@ -110,7 +112,15 @@ export default function LogHoursDialog({
   async function fetchUsers() {
     setFetchingUsers(true);
     try {
-      setUsers(await listAllUsers());
+      const [error, allUsers] = await listAllUsers(PBBrowser.getClient());
+
+      if (error || !allUsers) {
+        throw new Error(
+          error ? ErrorToString[error] ?? "PocketBase error" : "No users"
+        );
+      }
+
+      setUsers(allUsers);
     } catch (error: any) {
       logger.error({ err: error?.message }, "Error fetching users");
       toast.error("Failed to load users");
@@ -172,13 +182,18 @@ export default function LogHoursDialog({
 
     setSubmitting(true);
     try {
-      await createSessionsBulk(
+      const [error] = await createSessionsBulk(
         valid.map((s) => ({
           userId: s.userId,
           eventId: event.id,
           minutes: s.minutes
-        }))
+        })),
+        PBBrowser.getClient()
       );
+
+      if (error) {
+        throw new Error(ErrorToString[error] ?? error);
+      }
 
       logger.info({ eventId: event.id, count: valid.length }, "Hours logged");
       toast.success(
@@ -199,7 +214,10 @@ export default function LogHoursDialog({
       setOpen(false);
       onHoursLogged();
     } catch (error: any) {
-      logger.error({ eventId: event.id, err: error?.message }, "Error logging hours");
+      logger.error(
+        { eventId: event.id, err: error?.message },
+        "Error logging hours"
+      );
       toast.error("Failed to log hours");
     } finally {
       setSubmitting(false);
@@ -219,15 +237,26 @@ export default function LogHoursDialog({
 
     setSavingEvent(true);
     try {
-      await updateEvent(event.id, {
-        name: eventName,
-        date: eventDate
-      });
+      const [error] = await updateEvent(
+        event.id,
+        {
+          name: eventName,
+          date: eventDate
+        },
+        PBBrowser.getClient()
+      );
+
+      if (error) {
+        throw new Error(ErrorToString[error] ?? error);
+      }
       logger.info({ eventId: event.id }, "Event updated");
       toast.success("Event updated");
       onEventUpdated?.();
     } catch (error: any) {
-      logger.error({ eventId: event.id, err: error?.message }, "Error updating event");
+      logger.error(
+        { eventId: event.id, err: error?.message },
+        "Error updating event"
+      );
       toast.error("Failed to update event");
     } finally {
       setSavingEvent(false);

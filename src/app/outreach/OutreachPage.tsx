@@ -8,9 +8,10 @@ import { listUserData } from "@/lib/db/user";
 import { useNavbar } from "@/hooks/useNavbar";
 import { useIsHydrated } from "@/hooks/useIsHydrated";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { recordToImageUrl } from "@/lib/pbaseClient";
+import { PBBrowser, recordToImageUrl } from "@/lib/pb";
 import type { UserData, User } from "@/lib/types/pocketbase";
 import { formatMinutes, getBadgeStatusStyles } from "@/lib/utils";
+import { ErrorToString } from "@/lib/states";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -22,7 +23,6 @@ import { OutreachTable } from "./OutreachTable";
 import ActivityGraph from "./ActivityGraph";
 
 import { Users, Clock, TrendingUp, Calendar } from "lucide-react";
-import { hasPermission } from "@/lib/permissions";
 
 const PAGE_SIZE = 15;
 
@@ -44,7 +44,20 @@ type Props = {
 const fetcher = async (url: string): Promise<PaginatedResponse> => {
   const [, page] = url.split("?page=");
   const pageNum = parseInt(page) || 1;
-  return await listUserData(pageNum, PAGE_SIZE);
+  const [error, data] = await listUserData(
+    pageNum,
+    PAGE_SIZE,
+    PBBrowser.getClient()
+  );
+
+  if (error) {
+    console.error(
+      error ? ErrorToString[error] ?? "PocketBase error" : "No data returned"
+    );
+    return null as any;
+  }
+
+  return data;
 };
 
 const getKey = (

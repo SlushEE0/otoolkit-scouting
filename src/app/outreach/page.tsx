@@ -1,37 +1,36 @@
 import { redirect } from "next/navigation";
 
-import { execPocketbase } from "@/lib/pbaseServer";
-import type { User, UserData } from "@/lib/types/pocketbase";
-
 import OutreachPage from "./OutreachPage";
-import { hasPermission } from "@/lib/permissions";
+import { getUserRole, hasPermission } from "@/lib/permissions";
 import { getOutreachMinutesCutoff } from "@/lib/db/settings";
+import { PBServer } from "@/lib/pb";
+import { getUserData } from "@/lib/db/user";
 
 export default async function ServerDataFetcher() {
-  const [user, userData] = await execPocketbase(async (pb) => {
-    const authRecord = pb.authStore.record as User;
+  const pb = await PBServer.getClient();
 
-    let data: UserData | undefined = undefined;
-    try {
-      data = await pb
-        .collection("UserData")
-        .getFirstListItem<UserData>(`user='${authRecord.id}'`, {
-          expand: "user"
-        });
-    } catch (e) {}
+  const [error, userData] = await getUserData(
+    pb.authStore.record?.id || "",
+    pb
+  );
+  const userRole = getUserRole(pb);
 
-    return [authRecord, data];
-  });
-
-  const outreachMinutesCutoff = await getOutreachMinutesCutoff();
-
-  const canManage = hasPermission(user.role, "outreach:manage");
-
-  if (!user?.id) {
-    redirect("/auth/login");
+  if (error || !userData.expand?.user?.id || !userRole) {
+    redirect("/auth/login?redirect=/outreach");
   }
 
+  const outreachMinutesCutoff = await getOutreachMinutesCutoff(pb);
+
+  const canManage = hasPermission(userRole, "outreach:manage");
+
   return (
-    <OutreachPage {...{ canManage, user, userData, outreachMinutesCutoff }} />
+    <OutreachPage
+      {...{
+        canManage,
+        user: userData.expand.user,
+        userData,
+        outreachMinutesCutoff
+      }}
+    />
   );
 }

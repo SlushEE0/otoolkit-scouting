@@ -1,82 +1,93 @@
 import { Dispatch, SetStateAction } from "react";
-import { ClientResponseError } from "pocketbase";
-import { pb } from "@/lib/pbaseClient";
+import type { ListResult } from "pocketbase";
+
 import type { User, UserData } from "@/lib/types/pocketbase";
-import { PB_Codes } from "@/lib/states";
-import { setPocketbaseCookie } from "../pbaseServer";
+import { clearPBAuthCookie } from "../pbServerUtils";
+import { PBClientBase } from "../pb";
+import { ErrorCodes } from "../states";
 import { logger } from "../logger";
 
-export async function newUser(email: string, password: string, name: string) {
-  try {
-    const preExisting = await pb
-      .collection("users")
-      .getFirstListItem(`email="${email}"`);
+export async function newUser(
+  email: string,
+  password: string,
+  name: string,
+  client: PBClientBase
+): Promise<[ErrorCodes, null] | [null, User]> {
+  const [lookupError, existingUser] = await client.getFirstListItem<User>(
+    "users",
+    `email="${email}"`
+  );
 
-    if (preExisting.id) return ["ALREADY_EXISTS", null];
-  } catch (error: any) {}
+  if (existingUser) return ["01x03", null];
+  if (lookupError && lookupError !== "01x404") return [lookupError, null];
 
-  const res1 = await createUser(email, password, name);
-  if (res1[0] instanceof ClientResponseError) {
-    return [PB_Codes[res1[0].status as keyof typeof PB_Codes], null];
-  }
-
-  return [null, res1[1]];
+  return createUser(email, password, name, client);
 }
 
 export async function createUser(
   email: string,
   password: string,
-  name: string
-) {
-  try {
-    const user = await pb.collection("users").create({
-      email,
-      password,
-      passwordConfirm: password,
-      emailVisibility: true,
-      name,
-      role: "member"
-    });
+  name: string,
+  client: PBClientBase
+): Promise<[ErrorCodes, null] | [null, User]> {
+  const result = await client.createOne<User>("users", {
+    email,
+    password,
+    passwordConfirm: password,
+    emailVisibility: true,
+    name,
+    role: "member"
+  });
 
-    logger.info({ userId: user.id }, "User created");
-    return [null, user.id];
-  } catch (error: any) {
-    logger.error({ email, err: error?.message }, "User creation failed");
-
-    return [error, null];
+  const [, createdUser] = result;
+  if (createdUser) {
+    logger.info({ userId: createdUser.id, email }, "Created new user");
   }
+
+  return result;
 }
 
 export function registerAuthCallback(
-  setUser: Dispatch<SetStateAction<User | null>>
+  setUser: Dispatch<SetStateAction<User | null>>,
+  client: PBClientBase
 ) {
-  return pb.authStore.onChange(async (token, record) => {
+  const authStore = client.authStore;
+
+  return authStore.onChange(async (token, record) => {
     setUser(record as User);
-    setPocketbaseCookie(pb.authStore.exportToCookie());
+    clearPBAuthCookie();
   }, true);
 }
-export async function listUserData(page: number, perPage: number) {
-  return await pb.collection("UserData").getList<UserData>(page, perPage, {
+
+export async function listUserData(
+  page: number,
+  perPage: number,
+  client: PBClientBase
+): Promise<[ErrorCodes, null] | [null, ListResult<UserData>]> {
+  return client.getList<UserData>("UserData", page, perPage, {
     expand: "user"
   });
 }
 
-export async function listAllUsers() {
-  const users = await pb.collection("users").getFullList<User>({
-    sort: "name"
-  });
-  return users;
+export async function listAllUsers(
+  client: PBClientBase
+): Promise<[ErrorCodes, null] | [null, User[]]> {
+  return client.getFullList<User>("users", { sort: "name" });
 }
 
-export async function getUserData(userId: string): Promise<UserData | null> {
-  try {
-    const data = await pb
-      .collection("UserData")
-      .getFirstListItem<UserData>(`user='${userId}'`, {
-        expand: "user"
-      });
-    return data;
-  } catch (error: any) {
-    return null;
+export async function getUserData(
+  userId: string,
+  client: PBClientBase
+): Promise<[ErrorCodes, null] | [null, UserData]> {
+  const [error, data] = await client.getFirstListItem<UserData>(
+    "UserData",
+    `user='${userId}'`,
+    { expand: "user" }
+  );
+
+  if (error) {
+    return [error, null];
   }
+
+  return [null, data];
 }

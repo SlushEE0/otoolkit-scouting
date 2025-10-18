@@ -1,8 +1,10 @@
 "use server";
 
 import { faker } from "@faker-js/faker";
-import { execPocketbase as execPocketbase } from "@/lib/pbaseServer";
 import { logger } from "@/lib/logger";
+import { PBBrowser } from "../pb";
+
+const pb = PBBrowser.getClient().pbClient;
 
 export async function generateFakeUser() {
   return {
@@ -15,36 +17,34 @@ export async function generateFakeUser() {
 }
 
 export async function populateFakeUsers(count: number) {
-  execPocketbase(async (pb) => {
-    for (let i = 0; i < count; i++) {
-      const user = await generateFakeUser();
+  for (let i = 0; i < count; i++) {
+    const user = await generateFakeUser();
 
-      const response = await fetch(user.avatar);
+    const response = await fetch(user.avatar);
 
-      let file;
-      if (response.ok) {
-        const blob = await response.blob();
+    let file;
+    if (response.ok) {
+      const blob = await response.blob();
 
-        file = new File([blob], `avatar-${i}.jpg`, {
-          type: blob.type || "image/jpeg"
-        });
-      }
-
-      try {
-        await pb.collection("users").create({
-          email: user.email,
-          password: user.password,
-          passwordConfirm: user.password,
-          role: user.role,
-          name: user.name,
-          emailVisibility: true,
-          avatar: file
-        });
-      } catch (error) {
-        logger.error({ err: (error as any)?.message }, "Error creating user");
-      }
+      file = new File([blob], `avatar-${i}.jpg`, {
+        type: blob.type || "image/jpeg"
+      });
     }
-  });
+
+    try {
+      await pb.collection("users").create({
+        email: user.email,
+        password: user.password,
+        passwordConfirm: user.password,
+        role: user.role,
+        name: user.name,
+        emailVisibility: true,
+        avatar: file
+      });
+    } catch (error) {
+      logger.error({ err: (error as any)?.message }, "Error creating user");
+    }
+  }
 }
 
 export async function populateFakeOutreachSessions(count: number) {
@@ -54,24 +54,25 @@ export async function populateFakeOutreachSessions(count: number) {
   // - minutes (number)
   // - event (relation to OutreachEvents) (use id "9a6i619u8dqp344" for now)
 
-  execPocketbase(async (pb) => {
-    const numUsers = (await pb.collection("users").getList(1, 1)).totalItems;
+  const numUsers = (await pb.collection("users").getList(1, 1)).totalItems;
 
-    for (let i = 0; i < count; i++) {
-      const randUser = faker.number.int({ min: 2, max: numUsers - 1 });
-      const user = await pb.collection("users").getList(randUser, 1);
+  for (let i = 0; i < count; i++) {
+    const randUser = faker.number.int({ min: 2, max: numUsers - 1 });
+    const user = await pb.collection("users").getList(randUser, 1);
 
-      const minutes = faker.number.int({ min: 1, max: 900 });
+    const minutes = faker.number.int({ min: 1, max: 900 });
 
-      try {
-        await pb.collection("OutreachSessions").create({
-          user: user.items[0].id,
-          minutes,
-          event: "9a6i619u8dqp344" // Use a fixed event ID for now
-        });
-      } catch (error) {
-        logger.error({ err: (error as any)?.message }, "Error creating outreach session");
-      }
+    try {
+      await pb.collection("OutreachSessions").create({
+        user: user.items[0].id,
+        minutes,
+        event: "9a6i619u8dqp344" // Use a fixed event ID for now
+      });
+    } catch (error) {
+      logger.error(
+        { err: (error as any)?.message },
+        "Error creating outreach session"
+      );
     }
-  });
+  }
 }

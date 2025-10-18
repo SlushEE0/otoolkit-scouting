@@ -2,7 +2,8 @@
 import { useState } from "react";
 
 import { toast } from "sonner";
-import { pb, recordToImageUrl } from "@/lib/pbaseClient";
+import { PBBrowser, recordToImageUrl } from "@/lib/pb";
+import { ErrorToString } from "@/lib/states";
 import { formatMinutes } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { OutreachEvent, OutreachSession } from "@/lib/types/pocketbase";
@@ -23,7 +24,6 @@ import {
 
 import { Clock, Trash2 } from "lucide-react";
 
-
 interface EventSessionsTableProps {
   event: OutreachEvent;
   sessions: OutreachSession[];
@@ -41,12 +41,23 @@ export default function EventSessionsTable({
   const handleDeleteSession = async (sessionId: string) => {
     setDeletingId(sessionId);
     try {
-      await deleteSession(sessionId);
-      logger.warn({ sessionId, eventId: event.id }, "Session deleted from table");
+      const [error] = await deleteSession(sessionId, PBBrowser.getClient());
+
+      if (error) {
+        throw new Error(ErrorToString[error] ?? error);
+      }
+
+      logger.warn(
+        { sessionId, eventId: event.id },
+        "Session deleted from table"
+      );
       toast.success("Session deleted successfully");
       onSessionDeleted();
     } catch (error: any) {
-      logger.error({ sessionId, eventId: event.id, err: error?.message }, "Failed to delete session");
+      logger.error(
+        { sessionId, eventId: event.id, err: error?.message },
+        "Failed to delete session"
+      );
       toast.error("Failed to delete session");
     } finally {
       setDeletingId(null);

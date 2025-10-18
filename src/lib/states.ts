@@ -30,9 +30,13 @@ export enum SignupStates {
   ERR_UNKNOWN
 }
 
-export const PB_Codes = {
-  200: "SUCCESS",
-  400: "MISSING_FIELD",
-  403: "UNAUTHORIZED"
+export const ErrorToString = {
+  "00x01": "ENV_NOT_SET",
+  "01x01": "UNKNOWN",
+  "01x02": "ABORTED",
+  "01x03": "ALREADY_EXISTS",
+  "01x400": "INVALID",
+  "01x403": "UNAUTHORIZED",
+  "01x404": "NOT_FOUND"
 } as const;
-export type t_PB_Code = (typeof PB_Codes)[keyof typeof PB_Codes];
+export type ErrorCodes = keyof typeof ErrorToString; 

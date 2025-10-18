@@ -1,7 +1,9 @@
 import { toast } from "sonner";
 import { deleteEvent } from "@/lib/db/outreach";
+import { PBBrowser } from "@/lib/pb";
+
+import { ErrorToString } from "@/lib/states";
 import type { OutreachEvent } from "@/lib/types/pocketbase";
-import { logger } from "@/lib/logger";
 
 import { Calendar, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Loader from "@/components/Loader";
 import LogHoursDialog from "./LogHoursDialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+import { logger } from "@/lib/logger";
 
 interface EventsListProps {
   events: OutreachEvent[] | undefined;
@@ -37,7 +41,11 @@ export default function EventsList({
     }
 
     try {
-      await deleteEvent(eventId);
+      const [error] = await deleteEvent(eventId, PBBrowser.getClient());
+
+      if (error) {
+        throw new Error(ErrorToString[error] ?? error);
+      }
       logger.warn({ eventId }, "Event deleted via list");
       toast.success("Event deleted successfully");
       onEventDeleted();

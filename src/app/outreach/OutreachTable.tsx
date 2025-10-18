@@ -2,7 +2,7 @@
 
 // React
 import { useEffect, useState } from "react";
-import { recordToImageUrl } from "@/lib/pbaseClient";
+import { recordToImageUrl } from "@/lib/pb";
 import type { UserData } from "@/lib/types/pocketbase";
 import { formatMinutes, formatPbDate, getBadgeStatusStyles } from "@/lib/utils";
 // UI

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import useSWR from "swr";
 
 import { fetchEvents, fetchSessionsForEvent } from "@/lib/db/outreach";
+import { ErrorToString } from "@/lib/states";
 
 import { useNavbar } from "@/hooks/useNavbar";
 import { useIsHydrated } from "@/hooks/useIsHydrated";
@@ -16,6 +17,7 @@ import EventsList from "./EventsList";
 import EventDetails from "./EventDetails";
 
 import { Calendar } from "lucide-react";
+import { PBBrowser } from "@/lib/pb";
 
 export default function ManageEventsPage() {
   const { setDefaultExpanded } = useNavbar();
@@ -26,15 +28,44 @@ export default function ManageEventsPage() {
     null
   );
 
+  const eventsFetcher = async (): Promise<OutreachEvent[]> => {
+    const [error, data] = await fetchEvents(PBBrowser.getClient());
+
+    if (error || !data) {
+      throw new Error(
+        error ? ErrorToString[error] ?? "PocketBase error" : "No data returned"
+      );
+    }
+
+    return data;
+  };
+
   const {
     data: events,
     error: eventsError,
     mutate: mutateEvents
-  } = useSWR("outreach-events", fetchEvents);
+  } = useSWR("outreach-events", eventsFetcher);
+
+  const sessionsFetcher = async (): Promise<OutreachSession[]> => {
+    if (!selectedEvent) return [];
+
+    const [error, data] = await fetchSessionsForEvent(
+      selectedEvent.id,
+      PBBrowser.getClient()
+    );
+
+    if (error || !data) {
+      throw new Error(
+        error ? ErrorToString[error] ?? "PocketBase error" : "No data returned"
+      );
+    }
+
+    return data;
+  };
 
   const { data: sessions, mutate: mutateSessions } = useSWR(
     selectedEvent ? `outreach-sessions-${selectedEvent.id}` : null,
-    () => (selectedEvent ? fetchSessionsForEvent(selectedEvent.id) : [])
+    sessionsFetcher
   );
 
   const handleEventCreated = useCallback(() => mutateEvents(), [mutateEvents]);

@@ -1,11 +1,11 @@
-import { pb } from "./pbaseClient";
 import { BaseStates } from "./states";
-import { setPocketbaseCookie } from "./pbaseServer";
+import { clearPBAuthCookie, setPBAuthCookie } from "./pbServerUtils";
 
 import { pb_OAuthProvider } from "./types/pocketbase";
 import { SimpleLoginStates, SignupStates } from "./states";
 import { newUser } from "./db/user";
 import { logger } from "./logger";
+import { PBBrowser } from "./pb";
 
 export async function loginEmailPass(
   email: string,
@@ -29,10 +29,10 @@ export async function loginEmailPass(
     return SimpleLoginStates.ERR_PASSWORD_TOO_SHORT;
   }
 
+  const usersCol = PBBrowser.getClient().pbClient.collection("users");
+
   try {
-    const user = await pb
-      .collection("users")
-      .getFirstListItem(`email="${email}"`);
+    const user = await usersCol.getFirstListItem(`email="${email}"`);
 
     if (user.usesOAuth) {
       return SimpleLoginStates.ERR_USER_USES_OAUTH;
@@ -42,9 +42,7 @@ export async function loginEmailPass(
   }
 
   try {
-    const authData = await pb
-      .collection("users")
-      .authWithPassword(email, password);
+    const authData = await usersCol.authWithPassword(email, password);
 
     storeServerCookie();
     if (authData.token) return SimpleLoginStates.SUCCESS;
@@ -56,13 +54,15 @@ export async function loginEmailPass(
 }
 
 export async function loginOAuth(provider: pb_OAuthProvider) {
-  const authData = await pb.collection("users").authWithOAuth2({
-    provider,
-    createData: {
-      usesOAuth: true,
-      role: "member"
-    }
-  });
+  const authData = await PBBrowser.getClient()
+    .pbClient.collection("users")
+    .authWithOAuth2({
+      provider,
+      createData: {
+        usesOAuth: true,
+        role: "member"
+      }
+    });
 
   storeServerCookie();
   if (authData.token) return BaseStates.SUCCESS;
@@ -110,10 +110,10 @@ export async function signupEmailPass(
     return SignupStates.ERR_PASSWORD_TOO_SHORT;
   }
 
-  const result = await newUser(email, password1, name);
+  const result = await newUser(email, password1, name, PBBrowser.getClient());
 
   if (result[0]) {
-    if (result[0] === "ALREADY_EXISTS") {
+    if (result[0] === "01x03") {
       return SignupStates.ERR_ALREADY_EXISTS;
     }
     logger.error({ email, code: result[0] }, "Unknown signup error");
@@ -130,11 +130,11 @@ export async function signupEmailPass(
 }
 
 async function storeServerCookie() {
-  setPocketbaseCookie(pb.authStore.exportToCookie());
+  setPBAuthCookie(PBBrowser.getClient().authStore.exportToCookie());
 }
 
 export function logout() {
-  pb.authStore.clear();
-  setPocketbaseCookie("");
+  PBBrowser.getClient().authStore.clear();
+  clearPBAuthCookie();
   window?.location.reload();
 }

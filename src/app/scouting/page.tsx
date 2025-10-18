@@ -2,9 +2,10 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { execPocketbase } from "@/lib/pbaseServer";
+import { getScoutingConfig } from "@/lib/db/scouting";
+import { PBServer } from "@/lib/pb";
 
-import { FileText } from "lucide-react";
+import { AlertCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -12,18 +13,28 @@ import Loading from "./loading";
 import ScoutingForm from "./ScoutingForm";
 
 export default async function ScoutingPage() {
-  const { scoutingConfig, userId } = await execPocketbase(async (pb) => {
-    try {
-      const record = await pb
-        .collection("ScoutingSettings")
-        .getFirstListItem("key='ScoutingConfig'");
-      console.log(pb.authStore.record);
-      return { scoutingConfig: record.value, userId: pb.authStore.record?.id };
-    } catch (e) {
-      console.warn("[ScoutingPage]", e);
-      return { scoutingConfig: [] };
-    }
-  });
+  const pb = await PBServer.getClient();
+
+  const userId = pb.authStore.record?.id || null;
+  const [error, scoutingConfig] = await getScoutingConfig(pb);
+
+  if (error || scoutingConfig.length === 0) {
+    return (
+      <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+        <CardHeader className="mb-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-primary" />
+              No Questions Found
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              There are no questions available for scouting at this time.
+            </p>
+          </div>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   return (
     <div className="w-full h-full container mx-auto flex flex-col gap-3 p-4">

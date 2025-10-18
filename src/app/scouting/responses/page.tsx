@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { PBBrowser } from "@/lib/pb";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,28 +23,20 @@ import {
   dexie,
   markResponseAsUploaded
 } from "@/lib/db/scouting";
-import { pb } from "@/lib/pbaseClient";
 import type { DexieScoutingSubmission, Team } from "@/lib/types/scouting";
 import { useNavbar } from "@/hooks/useNavbar";
 import { UploadProgressDialog } from "./UploadProgressDialog";
-import type {
-  UploadProgressData,
-  UploadCompleteData
-} from "@/lib/types/uploadWorker";
 
 export default function ResponsesPage() {
   const [responses, setResponses] = useState<DexieScoutingSubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [uploadProgress, setUploadProgress] =
-    useState<UploadProgressData | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<any>(null);
   const [uploadStatus, setUploadStatus] = useState<
     "idle" | "uploading" | "complete" | "error"
   >("idle");
-  const [uploadResults, setUploadResults] = useState<
-    UploadCompleteData | undefined
-  >();
+  const [uploadResults, setUploadResults] = useState<any>();
   const [uploadError, setUploadError] = useState<string | undefined>();
 
   // Cancellation ref for in-component uploads
@@ -74,6 +68,7 @@ export default function ResponsesPage() {
       const totalCount = items.length;
       let successCount = 0;
       const errors: Array<{ id: number; error: string }> = [];
+      const pbClient = PBBrowser.getClient();
 
       for (let i = 0; i < items.length; i++) {
         if (cancelRef.current) {
@@ -83,7 +78,7 @@ export default function ResponsesPage() {
         }
 
         const r = items[i];
-        const progress: UploadProgressData = {
+        const progress = {
           currentIndex: i + 1,
           totalCount,
           currentResponse: `Response #${r.id} by ${r.user}`,
@@ -92,11 +87,15 @@ export default function ResponsesPage() {
         setUploadProgress(progress);
 
         try {
-          await pb.collection("ScoutingResponses").create({
+          const [error] = await pbClient.createOne("ScoutingResponses", {
             user: r.user,
             data: r.data,
             date: new Date(r.date).toISOString()
           });
+
+          if (error) {
+            throw new Error(error);
+          }
           if (r.id) {
             await markResponseAsUploaded(r.id);
           }
@@ -109,7 +108,7 @@ export default function ResponsesPage() {
         await new Promise((res) => setTimeout(res, 0));
       }
 
-      const result: UploadCompleteData = {
+      const result = {
         successCount,
         errorCount: errors.length,
         errors

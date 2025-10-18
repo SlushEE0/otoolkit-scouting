@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { NavbarServerConfig } from "../components/NavbarServerConfig";
-import NavbarTip from "@/components/NavbarTip";
+import ServerToaster from "../components/ServerToaster";
 
 export const metadata: Metadata = {
   title: "Optix Toolkit | Team Optix 3749",
@@ -57,6 +57,7 @@ export default function Home() {
   return (
     <main className="space-y-32 pb-14">
       <NavbarServerConfig setDefaultExpanded={false} />
+      <ServerToaster message="I'm storing cookies. You don't have a choice :)" type="info" />
 
       <section className="pt-32 container mx-auto px-6 max-w-5xl flex flex-col items-center text-center gap-8">
         <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-gradient-to-br from-primary to-chart-2 bg-clip-text text-transparent">

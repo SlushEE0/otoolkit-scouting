@@ -17,6 +17,7 @@ import {
   DialogTitle
 } from "@/components/ui/dialog";
 import { Edit2 } from "lucide-react";
+import { PBBrowser } from "@/lib/pb";
 
 export default function EditUserDialog({
   userData,
@@ -39,7 +40,8 @@ export default function EditUserDialog({
 
     const state = await manualModifyOutreachHours(
       userData.expand?.user.id || "",
-      deltaMinutes
+      deltaMinutes,
+      PBBrowser.getClient()
     );
 
     switch (state) {

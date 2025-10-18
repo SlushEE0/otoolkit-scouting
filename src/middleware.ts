@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { execPocketbase } from "./lib/pbaseServer";
+import { PBServer } from "./lib/pb";
 
 const adminOnlyRoutes = ["/admin", "/testing", "/outreach/manage"];
 const authedOnlyRoutes = [
@@ -23,9 +22,8 @@ export async function middleware(request: NextRequest) {
   if (![...authedOnlyRoutes, ...adminOnlyRoutes].includes(nextUrl.pathname))
     return NextResponse.next();
 
-  const record = await execPocketbase((pb) => {
-    return pb.authStore.record;
-  });
+  const pb = await PBServer.getClient();
+  const record = pb.authStore.record;
 
   if (!record) {
     nextUrl.pathname = "/auth/login";

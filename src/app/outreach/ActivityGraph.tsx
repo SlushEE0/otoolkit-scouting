@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { PBBrowser } from "@/lib/pb";
 import { fetchUserSessionEventDates } from "@/lib/db/outreach";
 import { ShortMonths } from "@/lib/utils";
+import { ErrorToString } from "@/lib/states";
 
 import { BarChart, Bar, XAxis, Cell } from "recharts";
 import {
@@ -63,7 +65,20 @@ export default function ActivityGraph({ id }: OutreachActivityGraphProps) {
 
   useEffect(() => {
     (async () => {
-      const timestamps = await fetchUserSessionEventDates(id);
+      const [error, timestamps] = await fetchUserSessionEventDates(
+        id,
+        PBBrowser.getClient()
+      );
+
+      if (error || !timestamps) {
+        console.error(
+          "Failed to fetch outreach activity",
+          error ? ErrorToString[error] ?? error : "No data"
+        );
+        setChartData([]);
+        return;
+      }
+
       const data = processTimestamps(timestamps);
 
       setChartData(data);

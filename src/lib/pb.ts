@@ -11,9 +11,7 @@ import { logger } from "./logger";
 
 import { User } from "./types/pocketbase";
 import {
-  getPBAuthCookie,
-  clearPBAuthCookie,
-  setPBAuthCookie
+  getPBAuthCookie
 } from "./pbServerUtils";
 import { ErrorCodes, ErrorToString } from "./states";
 

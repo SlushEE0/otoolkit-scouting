@@ -20,14 +20,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Send, Loader2, RotateCcw, AlertCircle } from "lucide-react";
 
-import { BooleanField } from "./components/BooleanField";
-import { NumberField } from "./components/NumberField";
-import { SliderField } from "./components/SliderField";
-import { TextField } from "./components/TextField";
-import { TextareaField } from "./components/TextareaField";
-import { SelectField } from "./components/SelectField";
+import { BooleanField } from "../../components/scoutingFormFields/BooleanField";
+import { NumberField } from "../../components/scoutingFormFields/NumberField";
+import { SliderField } from "../../components/scoutingFormFields/SliderField";
+import { TextField } from "../../components/scoutingFormFields/TextField";
+import { TextareaField } from "../../components/scoutingFormFields/TextareaField";
+import { SelectField } from "../../components/scoutingFormFields/SelectField";
 import { createResolver } from "./schema";
-import { TeamField } from "./components/TeamField";
+import { TeamField } from "../../components/scoutingFormFields/TeamField";
 
 interface ScoutingFormProps {
   config: ScoutingQuestionConfig[];

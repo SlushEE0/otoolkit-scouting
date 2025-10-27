@@ -9,8 +9,8 @@ import { AlertCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 
-import Loading from "./loading";
 import ScoutingForm from "./ScoutingForm";
+import Loader from "@/components/Loader";
 
 export default async function ScoutingPage() {
   const pb = await PBServer.getClient();
@@ -59,7 +59,7 @@ export default async function ScoutingPage() {
           <NavButtons className="w-full flex gap-3 pt-3" />
         </CardHeader>
       </Card>
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={<Loader />}>
         <ScoutingForm config={scoutingConfig} userId={userId || ""} />
       </Suspense>
     </div>

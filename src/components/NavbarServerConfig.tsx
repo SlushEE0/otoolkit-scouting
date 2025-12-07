@@ -2,20 +2,32 @@
 import { useEffect } from "react";
 import { useNavbar } from "@/hooks/useNavbar";
 
-type Props = {
-  setDefaultExpanded?: boolean;
-  doMinimalRendering?: boolean;
-};
+type UseNavbarReturnType = ReturnType<typeof useNavbar>;
 
-export function NavbarServerConfig({ ...props }: Props) {
+type Props = Partial<{
+  [K in keyof UseNavbarReturnType]: UseNavbarReturnType[K] extends (
+    arg: infer P
+  ) => any
+    ? P
+    : never;
+}>;
+
+export function NavbarServerConfig(props: Props) {
   const navbar = useNavbar();
+
   useEffect(() => {
-    if (props.setDefaultExpanded !== undefined) {
-      navbar.setDefaultExpanded(props.setDefaultExpanded);
+    for (const k in props) {
+      const key = k as keyof typeof props;
+      const value = props[key];
+
+      if (
+        value !== undefined &&
+        key in navbar &&
+        typeof navbar[key] !== "boolean"
+      ) {
+        (navbar[key] as any)(value);
+      }
     }
-    if (props.doMinimalRendering !== undefined) {
-      navbar.doMinimalRendering(props.doMinimalRendering);
-    }
-  }, [props.setDefaultExpanded, props.doMinimalRendering]);
+  }, [props]);
   return null;
 }

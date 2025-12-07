@@ -1,151 +1,94 @@
-yes this is chatgpted
+This repository contains the Scouting application component of the wider Optix
+Toolkit. The Optix Toolkit is a collection of tools used by FRC Team Optix 3749
+for team operations; this repo focuses on the Scouting functionality (match &
+pit scouting, form collection, and visualization).
 
-# Optix Toolkit
+Key points:
 
-Our comprehensive solution for tracking everything!
+- The app is optimized for mobile use in pit/match scouting and includes
+  configurable scouting forms, uploads, and basic charts.
 
-1. **Outreach Tracking** - Log and track team member outreach hours, with approval workflows for mentors
-2. **Scouting** - Collect data on other teams' robot performance during competitions to help with alliance selection
-3. **More Coming Soon!** - Plans for tool management, 
+Quick overview
 
-## Features
+- Features
 
-- 📊 **Outreach Management**: Track member hours, event participation, and generate reports
-- 🤖 **Robot Scouting**: Customizable forms to collect match and pit scouting data
-- 📱 **Mobile Friendly**: Works well on phones and tablets for pit scouting
-- 📈 **Data Visualization**: Charts and graphs for analyzing team performance
+  - Mobile-first scouting forms (match & pit)
+  - Uploads and progress UI for response submissions
+  - Data visualization components for analyzing scouting results
 
-## Tech Stack
+- Tech stack
+  - Frontend: Next.js (App Router) + React + TypeScript
+  - Backend: PocketBase (self-hosted) for auth and storage
+  - Styling/UI: Tailwind CSS and shadcn/ui components
 
-- **Frontend**: Next.js 15 with React 19 and TypeScript
-- **Backend**: PocketBase (handles auth, API, and database)
-- **UI**: Tailwind CSS with shadcn/ui components
-- **Database**: SQLite (via PocketBase)
+Quick start (component)
 
-## Quick Start
+1. Install dependencies
 
-### Prerequisites
-
-- Bun (recommended) or npm
-- Pocketbase
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/optix-toolkit.git
-   cd optix-toolkit
-   ```
-
-2. **Install dependencies**
-   ```bash
+   ```powershell
    bun install
-   # or npm install
+   # or
+   npm install
    ```
 
-3. **Set up environment variables**
-   
-   Create a `.env.local` file in the root directory:
+2. Configure PocketBase URL
+
+   Create `.env.local` in the project root (if you don't already have one):
+
    ```env
    NEXT_PUBLIC_PB_URL=http://localhost:30090
    ```
 
-4. **Start PocketBase**
-   
-   Navigate to the PocketBase directory and start the server:
-   ```bash
-   cd otoolkit-pb
-   # On Windows with WSL:
-   wsl ./LocalStart.sh
-   # Or manually:
-   ./pocketbase serve --dir=. --dev
-   ```
-   
-   PocketBase will run on `http://localhost:30090`
+3. Start PocketBase
 
-5. **Start the development server**
-   ```bash
+   PocketBase runs separately in the `otoolkit-pb` folder located at the
+   repository root. On Windows you can run the binary directly from that folder,
+   or use WSL if preferred. Example (from the root of this repo):
+
+   ```powershell
+   # from the repo root
+   cd .\otoolkit-pb
+   # If you have the pocketbase binary available on Windows
+   .\pocketbase.exe serve --dir=. --http=:30090 --log=pb.log
+   # Or from WSL (if you prefer):
+   # wsl ./LocalStart.sh
+   ```
+
+4. Run the Scouting app dev server
+
+   ```powershell
+   # from the project root (this repo)
    bun run dev
-   # or npm run dev
+   # or
+   npm run dev
    ```
-   
-   The app will be available at `http://localhost:3000`
 
-### First Time Setup
+   Then open: http://localhost:3000
 
-1. Visit `http://localhost:30090/_/` to access PocketBase admin
-2. Create an admin account
-3. Import the database schema (migrations should run automatically)
-4. Create your first user account in the app
+Notes
 
-## Project Structure
+- This repo is intended to be used together with the PocketBase instance in
+  `otoolkit-pb` (included alongside this component in the Optix Toolkit source).
+- If you're integrating into a different monorepo layout, ensure
+  `NEXT_PUBLIC_PB_URL` points to your running PocketBase instance.
 
-```
-src/
-├── app/                 # Next.js App Router pages
-│   ├── outreach/       # Outreach tracking pages
-│   ├── scouting/       # Robot scouting forms
-│   └── auth/           # Authentication pages
-├── components/         # Reusable React components
-├── lib/               # Utilities and configurations
-└── middleware.ts      # Route protection
+Contributing
 
-otoolkit-pb/           # PocketBase configuration
-├── pb_data/          # Database files
-├── pb_migrations/    # Database migrations
-└── pocketbase        # PocketBase binary
-```
+If you'd like to contribute to the Scouting app component:
 
-## Development Commands
+1. Fork this repository
+2. Create a feature branch (`git checkout -b feat/your-feature`)
+3. Make changes and run the dev server locally
+4. Push and open a pull request
 
-```bash
-# Start development server with Turbopack
-bun run dev
+License
 
-# Build for production
-bun run build
+This component is released under the MIT License — see the top-level `LICENSE`
+file for details.
 
-# Start production server
-bun start
+Contact
 
-# Lint code
-bun run lint
+If you have questions or issues, open a GitHub issue on this repository and tag
+@SlushEE0 or any of the project maintainers.
 
-# Start PocketBase (from otoolkit-pb directory)
-wsl ./LocalStart.sh
-```
-
-## Contributing
-
-We welcome contributions from other FRC teams and developers! 
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/new-feature`)
-3. Commit your changes (`git commit -am 'Add new feature'`)
-4. Push to the branch (`git push origin feat/new-feature`)
-5. Create a Pull Request
-
-Please follow TypeScript best practices and ensure your code passes linting.
-
-## License
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
-### Attribution Required
-
-If you use this software, please provide attribution by mentioning:
-- "Optix Toolkit by FRC Team Optix 3749"
-- Include a link back to this repository
-
-## About Team Optix 3749
-
-We are a FIRST Robotics Competition team from Del Norte High School in San Diego, California. This toolkit was built by our students and mentors to help streamline team operations and improve our competitive performance.
-
-## Credits
-
-- **Created by**: FRC Team Optix 3749
-- **Main Contributors**: Neel Adem
-
----
-
-**Questions or Issues?** Open an issue on GitHub or contact our team through our website.
+-- Optix Toolkit (Scouting component)

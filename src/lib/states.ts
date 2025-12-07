@@ -4,30 +4,16 @@ export enum BaseStates {
   LOADING
 }
 
-export enum SimpleLoginStates {
-  SUCCESS,
-  ERR_EMAIL_NOT_PROVIDED,
-  ERR_PASSWORD_NOT_PROVIDED,
-  ERR_INVALID_EMAIL,
-  ERR_PASSWORD_TOO_SHORT,
-  ERR_UNKNOWN,
-  ERR_EMAIL_NOT_FOUND,
-  ERR_INCORRECT_PASSWORD,
-  ERR_USER_USES_OAUTH
+export enum HostHALStates {
+  UNCONFIGURED,
+  ERROR,
+  SUCCESS
 }
 
-export enum SignupStates {
-  SUCCESS,
-  ERR_EMAIL_NOT_PROVIDED,
-  ERR_PASSWORD_NOT_PROVIDED,
-  ERR_NAME_NOT_PROVIDED,
-  ERR_PASSWORDS_DONT_MATCH,
-  ERR_INVALID_EMAIL,
-  ERR_INVALID_NAME,
-  ERR_PASSWORD_TOO_SHORT,
-  ERR_NAME_TOO_SHORT,
-  ERR_ALREADY_EXISTS,
-  ERR_UNKNOWN
+export enum HostWSStates {
+  DISCONNECTED,
+  CONNECTING,
+  CONNECTED
 }
 
 export const ErrorToString = {
@@ -39,4 +25,4 @@ export const ErrorToString = {
   "01x403": "UNAUTHORIZED",
   "01x404": "NOT_FOUND"
 } as const;
-export type ErrorCodes = keyof typeof ErrorToString; 
+export type ErrorCodes = keyof typeof ErrorToString;

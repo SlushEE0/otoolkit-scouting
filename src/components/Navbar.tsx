@@ -10,14 +10,14 @@ import { useIsHydrated } from "@/hooks/useIsHydrated";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavbar } from "@/hooks/useNavbar";
 import { recordToImageUrl } from "@/lib/pb";
-import { logout } from "@/lib/auth";
 
 import {
   User as UserIcon,
   Clock,
   Menu,
   SearchCode,
-  LogOut
+  LogOut,
+  Settings
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -82,6 +82,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Outreach",
     url: "/outreach",
     msg: "Going to the Outreach Sheet"
+  },
+  {
+    icon: <Settings className="h-5 w-5" />,
+    label: "Settings",
+    url: "/settings",
+    msg: "Going to Settings"
   }
   // {
   //   icon: <Settings className="h-5 w-5" />,
@@ -99,7 +105,7 @@ const USER_ITEMS: NavItem[] = [
     url: "/",
     msg: "Signing Out",
     func: () => {
-      logout();
+      () => {};
       return false;
     }
   }

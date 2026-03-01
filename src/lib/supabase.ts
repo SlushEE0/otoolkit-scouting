@@ -1,28 +1,59 @@
 /**
- * Supabase Client
+ * Supabase helpers – re-exports and shared utilities.
  *
- * Provides a singleton Supabase client for config storage.
- * The URL and anon key are set via environment variables.
- * When running offline, Supabase calls will fail gracefully.
+ * Client-side code should use `getSBBrowserClient()` from `./supabase/sbClient`.
+ * Server-side code should use `getSBServerClientWithNextJSCookies()` from `./supabase/sbServer`.
+ *
+ * `getSupabaseClient()` is a convenience alias for config-sync features that
+ * need to degrade gracefully when Supabase env vars are not set (offline mode).
  */
 
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { getSBBrowserClient } from "./supabase/sbClient";
+import { logger } from "./logger";
 
-let supabase: SupabaseClient | null = null;
+export { getSBBrowserClient } from "./supabase/sbClient";
 
+/**
+ * Returns the Supabase browser client, or null if env vars are not configured.
+ * Use this for features that should degrade gracefully offline.
+ */
 export function getSupabaseClient(): SupabaseClient | null {
-  if (supabase) return supabase;
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    console.warn(
-      "Supabase env vars not set (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY). Config sync disabled."
-    );
+  try {
+    return getSBBrowserClient();
+  } catch {
     return null;
   }
+}
 
-  supabase = createClient(url, key);
-  return supabase;
+/**
+ * Convenience wrapper to execute a Supabase request with logging.
+ */
+export async function makeSBRequest<T>(
+  fn: (sb: ReturnType<typeof getSBBrowserClient>) => Promise<T>,
+  client?: SupabaseClient
+): Promise<T> {
+  const sb = client ?? getSBBrowserClient();
+
+  const ret = await fn(sb as ReturnType<typeof getSBBrowserClient>);
+
+  if (ret && typeof ret === "object" && "error" in ret && (ret as any).error) {
+    logger.error({ ret }, "[SBRequest] Request Failed");
+    return ret;
+  } else {
+    logger.debug({ ret }, "[SBRequest] Request Succeeded");
+  }
+
+  return ret;
+}
+
+/**
+ * Get a user's profile/avatar image URL.
+ * With Supabase, avatars come from the user's OAuth provider metadata.
+ */
+export function getProfileImageUrl(
+  user?: { avatar_url?: string | null } | null
+): string | undefined {
+  if (user?.avatar_url) return user.avatar_url;
+  return undefined;
 }

@@ -32,21 +32,15 @@ export function SelectField({ question, localOptions }: SelectFieldProps) {
       return;
     }
 
-    // Fallback: try loading from PocketBase if no local options provided
+    // Fallback: try loading from Supabase if no local options provided
     const loadOptions = async () => {
       setIsLoading(true);
       try {
-        const { PBBrowser } = await import("@/lib/pb");
         const { fetchSelectOptions } = await import("@/lib/db/scouting");
-        const [err, teamOptions] = await fetchSelectOptions(
-          question.select_key,
-          PBBrowser.getClient()
-        );
-        if (!err) {
-          setOptions(teamOptions ?? []);
-        }
+        const options = await fetchSelectOptions(question.select_key);
+        setOptions(options ?? []);
       } catch {
-        console.warn("Failed to load select options from PocketBase");
+        console.warn("Failed to load select options from Supabase");
       } finally {
         setIsLoading(false);
       }

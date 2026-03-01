@@ -1,33 +1,27 @@
 "use server";
 
-import "server-only";
+/**
+ * Server-side auth utilities.
+ *
+ * Supabase SSR (@supabase/ssr) manages its own cookie-based sessions,
+ * so the old PocketBase cookie helpers are no longer needed.
+ * This module is retained for any future server-side auth needs.
+ */
 
-import { cookies } from "next/headers";
+import { getSBServerClientWithNextJSCookies } from "./supabase/sbServer";
 
-const COOKIE_NAME = "pb_auth_token";
-const COOKIE_EXPIRATION_DAYS =
-  parseInt(process.env.COOKIE_EXPIRATION_DAYS || "") || 30;
-
-const cookieExpirationMS = 1000 * 60 * 60 * 24 * COOKIE_EXPIRATION_DAYS;
-
-export async function setPBAuthCookie(value: string) {
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, value, {
-    expires: new Date(Date.now() + cookieExpirationMS),
-    secure: false,
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    domain: process.env.COOKIE_DOMAIN || undefined
-  });
+/**
+ * Get the currently authenticated Supabase user on the server.
+ */
+export async function getServerUser() {
+  try {
+    const sb = await getSBServerClientWithNextJSCookies();
+    const {
+      data: { user }
+    } = await sb.auth.getUser();
+    return user;
+  } catch {
+    return null;
+  }
 }
 
-export async function getPBAuthCookie() {
-  const cookieStore = await cookies();
-  return cookieStore.get(COOKIE_NAME)?.value || "";
-}
-
-export async function clearPBAuthCookie() {
-  const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
-}

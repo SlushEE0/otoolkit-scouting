@@ -9,7 +9,7 @@ import { useUser } from "@/hooks/useUser";
 import { useIsHydrated } from "@/hooks/useIsHydrated";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavbar } from "@/hooks/useNavbar";
-import { recordToImageUrl } from "@/lib/pb";
+import { getProfileImageUrl } from "@/lib/supabase";
 
 import {
   User as UserIcon,
@@ -34,7 +34,7 @@ import {
 
 import NavbarSkeleton from "./skeletons/NavbarSkeleton";
 import { Separator } from "@/components/ui/separator";
-import { User } from "@/lib/types/pocketbase";
+import type { DisplayUser } from "@/lib/types/pocketbase";
 
 type NavItem = {
   showInMinimal?: boolean;
@@ -114,7 +114,7 @@ const USER_ITEMS: NavItem[] = [
 export type NavItems = typeof NAV_ITEMS;
 
 type ChildProps = {
-  user: User | null;
+  user: DisplayUser | null;
   navItems: typeof NAV_ITEMS;
   onNavigate: (url: { url: string; msg?: string }) => void;
 } & ReturnType<typeof useNavbar>;
@@ -205,7 +205,7 @@ function Mobile({
             <div className="flex items-center space-x-3 pb-4 border-b border-border">
               <Avatar className="h-12 w-12">
                 <AvatarImage
-                  src={recordToImageUrl(user)?.toString()}
+                  src={getProfileImageUrl(user) || undefined}
                   alt={user.name || "User"}
                   className="rounded-full"
                 />
@@ -416,7 +416,7 @@ function Desktop({
                   </div>
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={recordToImageUrl(user)?.toString()}
+                      src={getProfileImageUrl(user) || undefined}
                       alt={user.name || "User"}
                       className="rounded-full"
                     />

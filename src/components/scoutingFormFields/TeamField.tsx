@@ -32,18 +32,15 @@ export function TeamField({ question, localOptions }: TeamFieldProps) {
       return;
     }
 
-    // Fallback: try loading from PocketBase if no local options provided
+    // Fallback: try loading from Supabase if no local options provided
     const loadOptions = async () => {
       setIsLoading(true);
       try {
-        const { PBBrowser } = await import("@/lib/pb");
         const { fetchTeamOptions } = await import("@/lib/db/scouting");
-        const [err, teamOptions] = await fetchTeamOptions(PBBrowser.getClient());
-        if (!err) {
-          setOptions(teamOptions ?? []);
-        }
+        const options = await fetchTeamOptions();
+        setOptions(options ?? []);
       } catch {
-        console.warn("Failed to load team options from PocketBase");
+        console.warn("Failed to load team options from Supabase");
       } finally {
         setIsLoading(false);
       }

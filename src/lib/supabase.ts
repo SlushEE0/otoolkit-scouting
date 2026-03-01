@@ -37,11 +37,12 @@ export async function makeSBRequest<T>(
 
   const ret = await fn(sb as ReturnType<typeof getSBBrowserClient>);
 
-  if (ret && typeof ret === "object" && "error" in ret && (ret as any).error) {
-    logger.error({ ret }, "[SBRequest] Request Failed");
-    return ret;
-  } else {
-    logger.debug({ ret }, "[SBRequest] Request Succeeded");
+  if (ret && typeof ret === "object" && "error" in ret) {
+    const errObj = ret as Record<string, unknown>;
+    if (errObj.error) {
+      logger.error({ ret }, "[SBRequest] Request Failed");
+      return ret;
+    }
   }
 
   return ret;

@@ -13,5 +13,5 @@ export async function logout() {
     logger.error({ err }, "Failed to sign out");
   }
 
-  window?.location.reload();
+  window.location.reload();
 }

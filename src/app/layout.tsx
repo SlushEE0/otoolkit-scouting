@@ -1,21 +1,11 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
 import Navbar from "@/components/Navbar";
 import NavbarTip from "@/components/NavbarTip";
+import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"]
-});
-
-// const geistMono = Geist_Mono({
-//   variable: "--font-geist-mono",
-//   subsets: ["latin"]
-// });
 
 export const metadata: Metadata = {
   title: "Optix Toolkit",
@@ -30,7 +20,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={"dark"}>
-        <main className={`w-full ${geistSans.className} antialiased`}>
+        <main className="w-full font-sans antialiased">
+          <ServiceWorkerRegistrar />
           <Navbar />
           <NavbarTip />
           <Toaster />

@@ -73,15 +73,21 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     icon: <SearchCode className="h-5 w-5" />,
-    label: "Scouting",
-    url: "/scouting",
-    msg: "Lets go scout!"
+    label: "Responses",
+    url: "/responses",
+    msg: "Viewing responses"
   },
   {
     icon: <Clock className="h-5 w-5" />,
-    label: "Outreach",
-    url: "/outreach",
-    msg: "Going to the Outreach Sheet"
+    label: "Export",
+    url: "/export",
+    msg: "Going to Export"
+  },
+  {
+    icon: <Settings className="h-5 w-5" />,
+    label: "Configure",
+    url: "/configure",
+    msg: "Going to Configure"
   },
   {
     icon: <Settings className="h-5 w-5" />,
@@ -89,12 +95,6 @@ const NAV_ITEMS: NavItem[] = [
     url: "/settings",
     msg: "Going to Settings"
   }
-  // {
-  //   icon: <Settings className="h-5 w-5" />,
-  //   label: "Admin",
-  //   url: "/admin",
-  //   msg: "Going to Admin"
-  // }
 ];
 
 const USER_ITEMS: NavItem[] = [

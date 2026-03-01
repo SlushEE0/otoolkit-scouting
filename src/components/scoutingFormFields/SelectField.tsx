@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { PBBrowser } from "@/lib/pb";
 import { useFormContext, Controller } from "react-hook-form";
 
 import {
@@ -11,45 +10,50 @@ import {
 } from "@/components/ui/select";
 import { BaseField } from "./BaseField";
 import { SelectQuestionConfig, SelectOption } from "@/lib/types/scouting";
-import { fetchSelectOptions } from "@/lib/db/scouting";
-import { ErrorToString } from "@/lib/states";
 
 interface SelectFieldProps {
   question: SelectQuestionConfig;
+  localOptions?: SelectOption[];
 }
 
-export function SelectField({ question }: SelectFieldProps) {
+export function SelectField({ question, localOptions }: SelectFieldProps) {
   const {
     control,
     formState: { errors }
   } = useFormContext();
-  const [options, setOptions] = useState<SelectOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [options, setOptions] = useState<SelectOption[]>(localOptions || []);
+  const [isLoading, setIsLoading] = useState(!localOptions);
   const error = errors[question.name]?.message as string | undefined;
 
   useEffect(() => {
+    if (localOptions) {
+      setOptions(localOptions);
+      setIsLoading(false);
+      return;
+    }
+
+    // Fallback: try loading from PocketBase if no local options provided
     const loadOptions = async () => {
       setIsLoading(true);
       try {
-        const [error, teamOptions] = await fetchSelectOptions(
+        const { PBBrowser } = await import("@/lib/pb");
+        const { fetchSelectOptions } = await import("@/lib/db/scouting");
+        const [err, teamOptions] = await fetchSelectOptions(
           question.select_key,
           PBBrowser.getClient()
         );
-
-        if (error) {
-          throw new Error(ErrorToString[error] ?? error);
+        if (!err) {
+          setOptions(teamOptions ?? []);
         }
-
-        setOptions(teamOptions ?? []);
-      } catch (error) {
-        console.error("Failed to load select options:", error);
+      } catch {
+        console.warn("Failed to load select options from PocketBase");
       } finally {
         setIsLoading(false);
       }
     };
 
     loadOptions();
-  }, []);
+  }, [localOptions, question.select_key]);
 
   return (
     <BaseField

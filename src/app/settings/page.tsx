@@ -50,11 +50,16 @@ export default function SettingsPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSaving, setIsSaving] = useState(false);
 
-  const ws = useMemo(() => new LocalhostScoutingDB(), []);
+  const ws = useMemo(
+    () =>
+      typeof window !== "undefined" ? new LocalhostScoutingDB() : null,
+    []
+  );
 
   const { setMobileNavbarSide } = useNavbar();
 
   const hasUnsavedChanges = useMemo(() => {
+    if (typeof window === "undefined") return false;
     return hasLocalSettingsChanges({ hostUrl, config });
   }, [hostUrl, config]);
 

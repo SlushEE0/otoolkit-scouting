@@ -13,11 +13,11 @@ import { User } from "./types/pocketbase";
 import {
   getPBAuthCookie
 } from "./pbServerUtils";
-import { ErrorCodes, ErrorToString } from "./states";
+import { ErrorCodes } from "./states";
 
 if (!process.env.NEXT_PUBLIC_PB_URL) {
-  throw new Error(
-    "PB_PUBLIC_URL is not defined. Please set the NEXT_PUBLIC_PB_URL environment variable."
+  console.warn(
+    "NEXT_PUBLIC_PB_URL is not defined. PocketBase features will be unavailable."
   );
 }
 
@@ -37,9 +37,7 @@ export function getPBUrl(forceType?: "client" | "server") {
   })();
 
   if (!url) {
-    throw new Error(`"00x01" - ${ErrorToString["00x01"]}`, {
-      cause: "PB URL is not defined. <getPBUrl> could not retrieve a valid URL."
-    });
+    return null;
   }
 
   return url;
@@ -48,8 +46,11 @@ export function getPBUrl(forceType?: "client" | "server") {
 export function recordToImageUrl(record?: User) {
   if (!record || !record.id) return null;
 
+  const url = getPBUrl();
+  if (!url) return null;
+
   const fileUrl = new URL(
-    `${getPBUrl()}/api/files/${record.collectionId}/${record.id}/${
+    `${url}/api/files/${record.collectionId}/${record.id}/${
       record.avatar
     }`
   );
@@ -176,7 +177,8 @@ export class PBBrowser extends PBClientBase {
   static instance: PBBrowser | null = null;
 
   private constructor() {
-    super(new PocketBase(getPBUrl("client")));
+    const url = getPBUrl("client");
+    super(new PocketBase(url || "http://localhost:8090"));
   }
 
   static getClient() {
@@ -193,7 +195,8 @@ export class PBServer extends PBClientBase {
 
     authStore.loadFromCookie(cookie);
 
-    super(new PocketBase(getPBUrl("server"), authStore));
+    const url = getPBUrl("server");
+    super(new PocketBase(url || "http://localhost:8090", authStore));
   }
 
   static async getClient() {

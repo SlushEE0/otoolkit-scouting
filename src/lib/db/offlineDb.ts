@@ -148,7 +148,7 @@ export async function getAllSubmissions(): Promise<
 export async function getUnexportedSubmissions(): Promise<
   OfflineScoutingSubmission[]
 > {
-  return offlineDb.submissions.where("exported").equals(0).toArray();
+  return offlineDb.submissions.filter((s) => !s.exported).toArray();
 }
 
 /**

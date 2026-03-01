@@ -141,7 +141,7 @@ function PreviewField({
                     </SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="noop" disabled>
+                  <SelectItem value="no-options" disabled>
                     No team options configured
                   </SelectItem>
                 )}
@@ -175,7 +175,7 @@ function PreviewField({
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="noop" disabled>
+                    <SelectItem value="no-options" disabled>
                       No options for key &quot;{question.select_key}&quot;
                     </SelectItem>
                   )}

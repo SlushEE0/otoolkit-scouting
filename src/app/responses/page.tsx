@@ -98,6 +98,7 @@ export default function ResponsesPage() {
             const responses = JSON.parse(sub.responses);
             const teamValue = responses.team || "—";
             const ts = new Date(sub.timestamp);
+            const teamDisplay = parseTeamDisplay(teamValue);
 
             return (
               <Card key={sub.id}>
@@ -105,7 +106,7 @@ export default function ResponsesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-semibold truncate">
-                        Team: {typeof teamValue === "string" ? (() => { try { return JSON.parse(teamValue)?.value || teamValue; } catch { return teamValue; } })() : teamValue}
+                        Team: {teamDisplay}
                       </span>
                       {sub.exported ? (
                         <Badge
@@ -141,4 +142,14 @@ export default function ResponsesPage() {
       )}
     </div>
   );
+}
+
+function parseTeamDisplay(teamValue: unknown): string {
+  if (typeof teamValue !== "string") return String(teamValue ?? "—");
+  try {
+    const parsed = JSON.parse(teamValue);
+    return parsed?.value ?? teamValue;
+  } catch {
+    return teamValue || "—";
+  }
 }

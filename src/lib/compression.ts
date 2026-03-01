@@ -47,7 +47,7 @@ export function compressData(data: unknown): string {
  */
 export function decompressData<T = unknown>(compressed: string): T {
   const json = decompressFromEncodedURIComponent(compressed);
-  if (!json) throw new Error("Failed to decompress data");
+  if (!json) throw new Error("Failed to decompress data: decompression returned null or invalid data");
   return JSON.parse(json) as T;
 }
 

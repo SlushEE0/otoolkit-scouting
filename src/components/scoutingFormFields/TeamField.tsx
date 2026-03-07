@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { PBBrowser } from "@/lib/pb";
 import { useFormContext, Controller } from "react-hook-form";
 
 import {
@@ -11,42 +10,27 @@ import {
 } from "@/components/ui/select";
 import { BaseField } from "./BaseField";
 import { TeamQuestionConfig, SelectOption } from "@/lib/types/scouting";
-import { fetchTeamOptions } from "@/lib/db/scouting";
-import { ErrorToString } from "@/lib/states";
 
 interface TeamFieldProps {
   question: TeamQuestionConfig;
+  localOptions?: SelectOption[];
 }
 
-export function TeamField({ question }: TeamFieldProps) {
+export function TeamField({ question, localOptions }: TeamFieldProps) {
   const {
     control,
     formState: { errors }
   } = useFormContext();
-  const [options, setOptions] = useState<SelectOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [options, setOptions] = useState<SelectOption[]>(localOptions || []);
+  const [isLoading, setIsLoading] = useState(!localOptions);
   const error = errors[question.name]?.message as string | undefined;
 
   useEffect(() => {
-    const loadOptions = async () => {
-      setIsLoading(true);
-      try {
-        const [error, teamOptions] = await fetchTeamOptions(PBBrowser.getClient());
-
-        if (error) {
-          throw new Error(ErrorToString[error] ?? error);
-        }
-
-        setOptions(teamOptions ?? []);
-      } catch (error) {
-        console.error("Failed to load select options:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadOptions();
-  }, []);
+    if (localOptions) {
+      setOptions(localOptions);
+      setIsLoading(false);
+    }
+  }, [localOptions]);
 
   return (
     <BaseField

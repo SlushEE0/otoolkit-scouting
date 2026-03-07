@@ -1,16 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-import { registerAuthCallback } from "@/lib/db/user";
-import type { User } from "@/lib/types/pocketbase";
-import { PBBrowser } from "@/lib/pb";
-
+/**
+ * Offline user hook — no authentication in this fully offline app.
+ * Returns null user. Retained for API compatibility with components
+ * that reference it (e.g. Navbar).
+ */
 export function useUser() {
-  const pb = PBBrowser.getClient();
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    return registerAuthCallback(setUser, pb);
-  }, []);
-
-  return { user, setUser } as const;
+  const [user] = useState<null>(null);
+  return { user, setUser: () => {} } as const;
 }

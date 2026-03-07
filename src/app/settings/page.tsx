@@ -37,7 +37,6 @@ import {
   validateLocalSettings
 } from "@/lib/db/settings";
 import z from "zod";
-import { useNavbar } from "@/hooks/useNavbar";
 
 type FormErrors = {
   hostUrl?: string;
@@ -50,11 +49,14 @@ export default function SettingsPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSaving, setIsSaving] = useState(false);
 
-  const ws = useMemo(() => new LocalhostScoutingDB(), []);
-
-  const { setMobileNavbarSide } = useNavbar();
+  const ws = useMemo(
+    () =>
+      typeof window !== "undefined" ? new LocalhostScoutingDB() : null,
+    []
+  );
 
   const hasUnsavedChanges = useMemo(() => {
+    if (typeof window === "undefined") return false;
     return hasLocalSettingsChanges({ hostUrl, config });
   }, [hostUrl, config]);
 
@@ -121,8 +123,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     handleResetToStored();
-
-    setMobileNavbarSide("right");
   }, [handleResetToStored]);
 
   return (

@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { toast } from "sonner";
-import { handleFormSubmission } from "@/lib/db/scouting";
-import { useNavbar } from "@/hooks/useNavbar";
+import { createSubmission } from "@/lib/db/offlineDb";
 
-import { ScoutingQuestionConfig } from "@/lib/types/scouting";
+import { ScoutingQuestionConfig, SelectOption } from "@/lib/types/scouting";
 
 import {
   Card,
@@ -31,12 +30,16 @@ import { TeamField } from "../../components/scoutingFormFields/TeamField";
 
 interface ScoutingFormProps {
   config: ScoutingQuestionConfig[];
-  userId: string;
+  teamOptions?: SelectOption[];
+  selectOptions?: Record<string, SelectOption[]>;
 }
 
-export default function ScoutingForm({ config, userId }: ScoutingFormProps) {
+export default function ScoutingForm({
+  config,
+  teamOptions = [],
+  selectOptions = {}
+}: ScoutingFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { setDefaultExpanded, setMobileNavbarSide } = useNavbar();
 
   const resolver = createResolver(config);
 
@@ -51,34 +54,17 @@ export default function ScoutingForm({ config, userId }: ScoutingFormProps) {
     formState: { errors, isValid }
   } = methods;
 
-  useEffect(() => {
-    setDefaultExpanded(false);
-    setMobileNavbarSide("right");
-
-    console.log(userId);
-  }, [setDefaultExpanded, setMobileNavbarSide]);
-
-  const onSubmit = async function (data: any) {
+  const onSubmit = async function (data: Record<string, unknown>) {
     setIsSubmitting(true);
 
-    toast.loading("Submitting scouting data...", { id: "sSubmit" });
+    toast.loading("Saving scouting data...", { id: "sSubmit" });
 
-    const submission = {
-      user: userId,
-      team: data.team,
-      data,
-      date: new Date()
-    };
-
-    console.log(submission);
-
-    const result = await handleFormSubmission(submission);
-
-    if (!result.error) {
-      toast.success("Scouting data submitted successfully!", { id: "sSubmit" });
+    try {
+      await createSubmission(data);
+      toast.success("Scouting data saved locally!", { id: "sSubmit" });
       reset();
-    } else {
-      toast.error(result.error || "Failed to submit data", { id: "sSubmit" });
+    } catch {
+      toast.error("Failed to save data", { id: "sSubmit" });
     }
 
     setIsSubmitting(false);
@@ -87,7 +73,13 @@ export default function ScoutingForm({ config, userId }: ScoutingFormProps) {
   const renderField = function (question: ScoutingQuestionConfig) {
     switch (question.type) {
       case "team":
-        return <TeamField key={question.name} question={question} />;
+        return (
+          <TeamField
+            key={question.name}
+            question={question}
+            localOptions={teamOptions}
+          />
+        );
       case "boolean":
         return <BooleanField key={question.name} question={question} />;
       case "number":
@@ -95,7 +87,13 @@ export default function ScoutingForm({ config, userId }: ScoutingFormProps) {
       case "slider":
         return <SliderField key={question.name} question={question} />;
       case "select":
-        return <SelectField key={question.name} question={question} />;
+        return (
+          <SelectField
+            key={question.name}
+            question={question}
+            localOptions={selectOptions[question.select_key]}
+          />
+        );
       case "text":
         return <TextField key={question.name} question={question} />;
       case "textarea":
@@ -190,7 +188,7 @@ export default function ScoutingForm({ config, userId }: ScoutingFormProps) {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Submitting...
+                    Saving...
                   </>
                 ) : (
                   <>

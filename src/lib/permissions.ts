@@ -1,7 +1,5 @@
-import { PBClientBase } from "./pb";
-import { User } from "./types/pocketbase";
-
-type Permission = (typeof ROLES)[User["role"]][number];
+type UserRole = "guest" | "member" | "admin";
+type Permission = (typeof ROLES)[UserRole][number];
 
 const guest = ["outreach:view"] as const;
 const member = [...guest, "scouting:submit", "scouting:view"] as const;
@@ -13,14 +11,9 @@ const ROLES = {
   admin
 } as const;
 
-export function hasPermission(userRole: User["role"], flag: Permission) {
+export function hasPermission(userRole: UserRole, flag: Permission) {
   if (!userRole || !flag) return false;
 
   if ((ROLES[userRole] as readonly Permission[]).includes(flag)) return true;
   return false;
-}
-
-export function getUserRole(client: PBClientBase): User["role"] | null {
-  const role = client.authStore.record?.role || null;
-  return role;
 }

@@ -1,5 +1,3 @@
-import { User } from "./types/pocketbase";
-
 type UserRole = "guest" | "member" | "admin";
 type Permission = (typeof ROLES)[UserRole][number];
 

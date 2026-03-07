@@ -29,24 +29,7 @@ export function SelectField({ question, localOptions }: SelectFieldProps) {
     if (localOptions) {
       setOptions(localOptions);
       setIsLoading(false);
-      return;
     }
-
-    // Fallback: try loading from Supabase if no local options provided
-    const loadOptions = async () => {
-      setIsLoading(true);
-      try {
-        const { fetchSelectOptions } = await import("@/lib/db/scouting");
-        const options = await fetchSelectOptions(question.select_key);
-        setOptions(options ?? []);
-      } catch {
-        console.warn("Failed to load select options from Supabase");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadOptions();
   }, [localOptions, question.select_key]);
 
   return (

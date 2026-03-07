@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { loadCachedConfig } from "@/lib/db/offlineDb";
 
-import { AlertCircle, FileText, Download } from "lucide-react";
+import { AlertCircle, FileText, Download, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -89,11 +89,17 @@ function NoConfigFound() {
             configure page on a desktop to set up your form, then download it
             here.
           </p>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Link href="/configure">
               <Button>
                 <Download className="h-4 w-4 mr-2" />
                 Configure / Download
+              </Button>
+            </Link>
+            <Link href="/scan">
+              <Button variant="outline">
+                <QrCode className="h-4 w-4 mr-2" />
+                Scan QR Config
               </Button>
             </Link>
           </div>

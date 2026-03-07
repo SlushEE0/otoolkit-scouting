@@ -14,7 +14,7 @@ const CACHE_NAME = "otoolkit-scouting-v1";
  * Next.js generates hashed file names, so we rely on runtime
  * caching for JS/CSS bundles and pre-cache only the entry points.
  */
-const PRECACHE_URLS = ["/", "/export", "/configure", "/responses"];
+const PRECACHE_URLS = ["/", "/export", "/configure", "/responses", "/scan"];
 
 /* ---------- Install ---------- */
 self.addEventListener("install", (event) => {

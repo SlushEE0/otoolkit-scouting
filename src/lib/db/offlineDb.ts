@@ -6,7 +6,7 @@
  * - submissions: scouting entries with UUID, deviceId, timestamp
  *
  * Architecture:
- * - Config is downloaded once from Supabase and cached here.
+ * - Config is entered via the /configure page and cached here.
  * - Submissions are created offline and exported via QR codes.
  * - The Windows import app deduplicates by UUID.
  */

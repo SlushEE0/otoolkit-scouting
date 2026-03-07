@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "sonner";
-import Link from "next/link";
-import { getSupabaseClient } from "@/lib/supabase";
+import { v4 as uuidv4 } from "uuid";
+import { QRCodeSVG } from "qrcode.react";
 import {
   saveConfigLocally,
   loadCachedConfig,
   clearCachedConfig
 } from "@/lib/db/offlineDb";
+import { compressData, createQRChunks, type QRChunk } from "@/lib/compression";
 import type {
   ScoutingQuestionConfig,
   SelectOption
@@ -23,70 +24,85 @@ import {
   CardFooter
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  Settings2,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import {
   Download,
-  Upload,
   Trash2,
   Eye,
-  ArrowLeft,
+  EyeOff,
   Save,
-  CheckCircle2
+  CheckCircle2,
+  Plus,
+  QrCode,
+  ChevronLeft,
+  ChevronRight,
+  Code,
+  X
 } from "lucide-react";
 
 import FormPreview from "./FormPreview";
+import QuestionEditor from "./QuestionEditor";
+
+type QuestionType = ScoutingQuestionConfig["type"];
+
+function createDefaultQuestion(type: QuestionType): ScoutingQuestionConfig {
+  const base = { name: "", description: undefined, optional: false };
+  switch (type) {
+    case "team":
+      return { ...base, type: "team" };
+    case "select":
+      return { ...base, type: "select", select_key: "" };
+    case "number":
+      return { ...base, type: "number", min: 0, max: 100 };
+    case "boolean":
+      return { ...base, type: "boolean" };
+    case "slider":
+      return { ...base, type: "slider", min: 0, max: 10 };
+    case "text":
+      return { ...base, type: "text" };
+    case "textarea":
+      return { ...base, type: "textarea" };
+  }
+}
 
 /**
- * Configure page — desktop-oriented config editor.
- *
- * Features:
- * 1. Edit scouting form config JSON.
- * 2. Real-time preview of the resulting form.
- * 3. Save/load config from Supabase.
- * 4. Download config to IndexedDB for offline scouting.
+ * Configure page — visual config builder with live preview & QR sharing.
  */
 export default function ConfigurePage() {
-  const [configJson, setConfigJson] = useState("[]");
-  const [teamOptionsJson, setTeamOptionsJson] = useState("[]");
-  const [selectOptionsJson, setSelectOptionsJson] = useState("{}");
-  const [supabaseConfigId, setSupabaseConfigId] = useState("");
+  const [questions, setQuestions] = useState<ScoutingQuestionConfig[]>([]);
+  const [teamOptions, setTeamOptions] = useState<SelectOption[]>([]);
+  const [selectOptions, setSelectOptions] = useState<
+    Record<string, SelectOption[]>
+  >({});
   const [hasLocalConfig, setHasLocalConfig] = useState(false);
   const [localDownloadedAt, setLocalDownloadedAt] = useState<string | null>(
     null
   );
   const [showPreview, setShowPreview] = useState(true);
+  const [showRawJson, setShowRawJson] = useState(false);
+  const [addType, setAddType] = useState<QuestionType>("text");
 
-  // Parse config for preview (gracefully handle invalid JSON)
-  const parsedConfig = useMemo<ScoutingQuestionConfig[]>(() => {
-    try {
-      const parsed = JSON.parse(configJson);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }, [configJson]);
-
-  const parsedTeamOptions = useMemo<SelectOption[]>(() => {
-    try {
-      const parsed = JSON.parse(teamOptionsJson);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }, [teamOptionsJson]);
-
-  const parsedSelectOptions = useMemo<Record<string, SelectOption[]>>(() => {
-    try {
-      const parsed = JSON.parse(selectOptionsJson);
-      return typeof parsed === "object" && parsed !== null ? parsed : {};
-    } catch {
-      return {};
-    }
-  }, [selectOptionsJson]);
+  // QR sharing state
+  const [qrChunks, setQrChunks] = useState<QRChunk[]>([]);
+  const [currentQrChunk, setCurrentQrChunk] = useState(0);
 
   // Load local config status on mount
   useEffect(() => {
@@ -94,90 +110,129 @@ export default function ConfigurePage() {
       if (cached) {
         setHasLocalConfig(true);
         setLocalDownloadedAt(cached.downloadedAt);
+        setQuestions(cached.config);
+        setTeamOptions(cached.teamOptions);
+        setSelectOptions(cached.selectOptions);
       }
     });
   }, []);
 
-  // ----- Supabase save/load -----
+  // ---- Question CRUD ----
 
-  const handleSaveToSupabase = async () => {
-    const client = getSupabaseClient();
-    if (!client) {
-      toast.error("Supabase not configured. Set environment variables.");
-      return;
-    }
+  const addQuestion = useCallback(() => {
+    setQuestions((prev) => [...prev, createDefaultQuestion(addType)]);
+  }, [addType]);
 
-    try {
-      const payload = {
-        config: JSON.parse(configJson),
-        team_options: JSON.parse(teamOptionsJson),
-        select_options: JSON.parse(selectOptionsJson),
-        updated_at: new Date().toISOString()
-      };
+  const updateQuestion = useCallback(
+    (index: number, updated: ScoutingQuestionConfig) => {
+      setQuestions((prev) => prev.map((q, i) => (i === index ? updated : q)));
+    },
+    []
+  );
 
-      const { data, error } = await client
-        .from("scouting_configs")
-        .upsert({ id: supabaseConfigId || undefined, ...payload })
-        .select()
-        .single();
+  const removeQuestion = useCallback((index: number) => {
+    setQuestions((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
-      if (error) throw error;
+  const moveQuestion = useCallback((index: number, direction: -1 | 1) => {
+    setQuestions((prev) => {
+      const next = [...prev];
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }, []);
 
-      if (data?.id) setSupabaseConfigId(data.id);
-      toast.success("Config saved to Supabase!");
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      toast.error("Failed to save: " + message);
-    }
-  };
+  // ---- Team options CRUD ----
 
-  const handleLoadFromSupabase = async () => {
-    const client = getSupabaseClient();
-    if (!client) {
-      toast.error("Supabase not configured. Set environment variables.");
-      return;
-    }
+  const addTeamOption = useCallback(() => {
+    setTeamOptions((prev) => [...prev, { name: "", value: 0 }]);
+  }, []);
 
-    if (!supabaseConfigId) {
-      toast.error("Enter a config ID to load.");
-      return;
-    }
-
-    try {
-      const { data, error } = await client
-        .from("scouting_configs")
-        .select("*")
-        .eq("id", supabaseConfigId)
-        .single();
-
-      if (error) throw error;
-
-      setConfigJson(JSON.stringify(data.config, null, 2));
-      setTeamOptionsJson(JSON.stringify(data.team_options || [], null, 2));
-      setSelectOptionsJson(
-        JSON.stringify(data.select_options || {}, null, 2)
+  const updateTeamOption = useCallback(
+    (index: number, field: "name" | "value", val: string | number) => {
+      setTeamOptions((prev) =>
+        prev.map((o, i) => (i === index ? { ...o, [field]: val } : o))
       );
-      toast.success("Config loaded from Supabase!");
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      toast.error("Failed to load: " + message);
+    },
+    []
+  );
+
+  const removeTeamOption = useCallback((index: number) => {
+    setTeamOptions((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // ---- Select options CRUD ----
+
+  const [newSelectKey, setNewSelectKey] = useState("");
+
+  const addSelectKey = useCallback(() => {
+    const key = newSelectKey.trim();
+    if (!key) return;
+    if (selectOptions[key]) {
+      toast.error(`Key "${key}" already exists.`);
+      return;
     }
-  };
+    setSelectOptions((prev) => ({ ...prev, [key]: [] }));
+    setNewSelectKey("");
+  }, [newSelectKey, selectOptions]);
 
-  // ----- Local download -----
+  const removeSelectKey = useCallback((key: string) => {
+    setSelectOptions((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
 
-  const handleDownloadToDevice = async () => {
+  const addSelectOption = useCallback((key: string) => {
+    setSelectOptions((prev) => ({
+      ...prev,
+      [key]: [...(prev[key] || []), { name: "", value: 0 }]
+    }));
+  }, []);
+
+  const updateSelectOption = useCallback(
+    (
+      key: string,
+      index: number,
+      field: "name" | "value",
+      val: string | number
+    ) => {
+      setSelectOptions((prev) => ({
+        ...prev,
+        [key]: prev[key].map((o, i) =>
+          i === index ? { ...o, [field]: val } : o
+        )
+      }));
+    },
+    []
+  );
+
+  const removeSelectOption = useCallback((key: string, index: number) => {
+    setSelectOptions((prev) => ({
+      ...prev,
+      [key]: prev[key].filter((_, i) => i !== index)
+    }));
+  }, []);
+
+  // ---- Save / Clear ----
+
+  const isConfigValid = questions.length > 0 && questions.every((q) => q.name);
+
+  const handleSaveToDevice = async () => {
+    if (!isConfigValid) {
+      toast.error("All questions must have a name.");
+      return;
+    }
     try {
-      const config = JSON.parse(configJson);
-      const teamOptions = JSON.parse(teamOptionsJson);
-      const selectOptions = JSON.parse(selectOptionsJson);
-
-      await saveConfigLocally(config, teamOptions, selectOptions);
+      await saveConfigLocally(questions, teamOptions, selectOptions);
       setHasLocalConfig(true);
       setLocalDownloadedAt(new Date().toISOString());
       toast.success("Config saved to device for offline use!");
     } catch {
-      toast.error("Invalid JSON. Fix errors before downloading.");
+      toast.error("Failed to save config.");
     }
   };
 
@@ -188,129 +243,289 @@ export default function ConfigurePage() {
     toast.success("Local config cleared.");
   };
 
-  const isConfigValid = parsedConfig.length > 0;
+  // ---- QR sharing ----
+
+  const generateQr = useCallback(() => {
+    const payload = { questions, teamOptions, selectOptions };
+    const compressed = compressData(payload);
+    const sessionId = uuidv4();
+    const chunks = createQRChunks(compressed, sessionId);
+    setQrChunks(chunks);
+    setCurrentQrChunk(0);
+  }, [questions, teamOptions, selectOptions]);
+
+  // ---- JSON display ----
+
+  const rawJson = useMemo(
+    () =>
+      JSON.stringify({ questions, teamOptions, selectOptions }, null, 2),
+    [questions, teamOptions, selectOptions]
+  );
 
   return (
     <div className="w-full h-full container mx-auto flex flex-col gap-6 p-4 md:p-8">
-      <div className="flex items-center gap-3">
-        <Link href="/">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold">Configure Scouting Form</h1>
           <p className="text-muted-foreground text-sm">
-            Edit the form config and preview changes in real-time
+            Build your form visually and preview changes in real-time
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={generateQr}
+                disabled={!isConfigValid}>
+                <QrCode className="size-4 mr-2" />
+                Share via QR
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <QrCode className="size-5" />
+                  QR Code {currentQrChunk + 1} of {qrChunks.length || 1}
+                </DialogTitle>
+                <DialogDescription>
+                  Scan each QR code in order on the target device.
+                </DialogDescription>
+              </DialogHeader>
+              {qrChunks.length > 0 && qrChunks[currentQrChunk] && (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="bg-white p-4 rounded-lg">
+                    <QRCodeSVG
+                      value={JSON.stringify(qrChunks[currentQrChunk])}
+                      size={260}
+                      level="M"
+                    />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setCurrentQrChunk((c) => c - 1)}
+                      disabled={currentQrChunk === 0}>
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                    <span className="text-sm font-medium tabular-nums">
+                      {currentQrChunk + 1} / {qrChunks.length}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setCurrentQrChunk((c) => c + 1)}
+                      disabled={currentQrChunk === qrChunks.length - 1}>
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left column: Editor */}
+        {/* Left column: Builder */}
         <div className="flex flex-col gap-6">
-          {/* Supabase sync */}
+          {/* Add question controls */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Settings2 className="h-5 w-5" />
-                Supabase Config Sync
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Questions</CardTitle>
               <CardDescription>
-                Save and load scouting configs from Supabase for sharing across
-                devices.
+                {questions.length} question{questions.length !== 1 && "s"}{" "}
+                configured
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <Input
-                placeholder="Config ID (leave empty to create new)"
-                value={supabaseConfigId}
-                onChange={(e) => setSupabaseConfigId(e.target.value)}
-              />
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLoadFromSupabase}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Load
-                </Button>
-                <Button size="sm" onClick={handleSaveToSupabase}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Save to Supabase
+            <CardContent className="pt-0">
+              <div className="flex items-center gap-2">
+                <Select
+                  value={addType}
+                  onValueChange={(v) => setAddType(v as QuestionType)}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="team">Team</SelectItem>
+                    <SelectItem value="select">Select</SelectItem>
+                    <SelectItem value="number">Number</SelectItem>
+                    <SelectItem value="boolean">Boolean</SelectItem>
+                    <SelectItem value="slider">Slider</SelectItem>
+                    <SelectItem value="text">Text</SelectItem>
+                    <SelectItem value="textarea">Textarea</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={addQuestion} size="sm">
+                  <Plus className="size-4 mr-1" />
+                  Add
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Config JSON editor */}
+          {/* Question editors */}
+          <div className="flex flex-col gap-3">
+            {questions.map((q, i) => (
+              <QuestionEditor
+                key={i}
+                question={q}
+                index={i}
+                total={questions.length}
+                onChange={(updated) => updateQuestion(i, updated)}
+                onRemove={() => removeQuestion(i)}
+                onMoveUp={() => moveQuestion(i, -1)}
+                onMoveDown={() => moveQuestion(i, 1)}
+              />
+            ))}
+            {questions.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No questions yet. Use the dropdown above to add one.
+              </p>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Team options editor */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Form Config JSON</CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">Team Options</CardTitle>
+                  <CardDescription>
+                    Teams available in &quot;team&quot; type fields.
+                  </CardDescription>
+                </div>
+                <Button onClick={addTeamOption} size="sm" variant="outline">
+                  <Plus className="size-4 mr-1" />
+                  Add Team
+                </Button>
+              </div>
+            </CardHeader>
+            {teamOptions.length > 0 && (
+              <CardContent className="pt-0 space-y-2">
+                {teamOptions.map((opt, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      className="flex-1"
+                      placeholder="Team name"
+                      value={opt.name}
+                      onChange={(e) =>
+                        updateTeamOption(i, "name", e.target.value)
+                      }
+                    />
+                    <Input
+                      className="w-24"
+                      type="number"
+                      placeholder="#"
+                      value={opt.value}
+                      onChange={(e) =>
+                        updateTeamOption(i, "value", Number(e.target.value))
+                      }
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-destructive shrink-0"
+                      onClick={() => removeTeamOption(i)}>
+                      <X className="size-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            )}
+          </Card>
+
+          {/* Select options editor */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Select Options</CardTitle>
               <CardDescription>
-                Define the scouting form questions as a JSON array.
-                {isConfigValid && (
-                  <Badge variant="secondary" className="ml-2">
-                    {parsedConfig.length} question
-                    {parsedConfig.length !== 1 && "s"}
-                  </Badge>
-                )}
+                Options for each select_key used by &quot;select&quot; fields.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Textarea
-                className="font-mono text-xs min-h-[300px]"
-                spellCheck={false}
-                value={configJson}
-                onChange={(e) => setConfigJson(e.target.value)}
-                placeholder='[{"name":"Team","type":"team"},{"name":"Score","type":"number","min":0,"max":100}]'
-              />
+            <CardContent className="pt-0 space-y-4">
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="New key (e.g. alliance_color)"
+                  value={newSelectKey}
+                  onChange={(e) => setNewSelectKey(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addSelectKey()}
+                />
+                <Button onClick={addSelectKey} size="sm" variant="outline">
+                  <Plus className="size-4 mr-1" />
+                  Add Key
+                </Button>
+              </div>
+
+              {Object.entries(selectOptions).map(([key, opts]) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="secondary">{key}</Badge>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => addSelectOption(key)}>
+                        <Plus className="size-3.5 mr-1" />
+                        Option
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        onClick={() => removeSelectKey(key)}>
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  {opts.map((opt, i) => (
+                    <div key={i} className="flex items-center gap-2 ml-4">
+                      <Input
+                        className="flex-1"
+                        placeholder="Option name"
+                        value={opt.name}
+                        onChange={(e) =>
+                          updateSelectOption(key, i, "name", e.target.value)
+                        }
+                      />
+                      <Input
+                        className="w-24"
+                        type="number"
+                        placeholder="Value"
+                        value={opt.value}
+                        onChange={(e) =>
+                          updateSelectOption(
+                            key,
+                            i,
+                            "value",
+                            Number(e.target.value)
+                          )
+                        }
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-destructive shrink-0"
+                        onClick={() => removeSelectOption(key, i)}>
+                        <X className="size-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </CardContent>
           </Card>
 
-          {/* Team & select options */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Team Options JSON</CardTitle>
-              <CardDescription>
-                Array of team options for &quot;team&quot; type fields.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                className="font-mono text-xs min-h-[120px]"
-                spellCheck={false}
-                value={teamOptionsJson}
-                onChange={(e) => setTeamOptionsJson(e.target.value)}
-                placeholder='[{"name":"Team Alpha","value":3749}]'
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Select Options JSON</CardTitle>
-              <CardDescription>
-                Object keyed by select_key with arrays of options.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                className="font-mono text-xs min-h-[120px]"
-                spellCheck={false}
-                value={selectOptionsJson}
-                onChange={(e) => setSelectOptionsJson(e.target.value)}
-                placeholder='{"alliance_color":[{"name":"Red","value":1},{"name":"Blue","value":2}]}'
-              />
-            </CardContent>
-          </Card>
-
-          {/* Download to device */}
+          {/* Save to device */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Save className="h-5 w-5" />
-                Download to Device
+                Save to Device
               </CardTitle>
               <CardDescription>
                 Save config to this device&apos;s IndexedDB for offline
@@ -326,7 +541,7 @@ export default function ConfigurePage() {
             </CardHeader>
             <CardFooter className="flex gap-3">
               <Button
-                onClick={handleDownloadToDevice}
+                onClick={handleSaveToDevice}
                 disabled={!isConfigValid}>
                 <Download className="h-4 w-4 mr-2" />
                 Save to Device
@@ -338,6 +553,30 @@ export default function ConfigurePage() {
                 </Button>
               )}
             </CardFooter>
+          </Card>
+
+          {/* Raw JSON toggle */}
+          <Card>
+            <CardHeader
+              className="cursor-pointer"
+              onClick={() => setShowRawJson(!showRawJson)}>
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Code className="size-4" />
+                Raw JSON
+                <Badge variant="outline" className="ml-auto text-xs">
+                  {showRawJson ? "Hide" : "Show"}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            {showRawJson && (
+              <CardContent className="pt-0">
+                <Textarea
+                  readOnly
+                  className="font-mono text-xs min-h-[200px]"
+                  value={rawJson}
+                />
+              </CardContent>
+            )}
           </Card>
         </div>
 
@@ -352,16 +591,26 @@ export default function ConfigurePage() {
               variant="ghost"
               size="sm"
               onClick={() => setShowPreview(!showPreview)}>
-              {showPreview ? "Hide" : "Show"} Preview
+              {showPreview ? (
+                <>
+                  <EyeOff className="size-4 mr-1" /> Hide
+                </>
+              ) : (
+                <>
+                  <Eye className="size-4 mr-1" /> Show
+                </>
+              )}
             </Button>
           </div>
           <Separator />
           {showPreview && (
-            <FormPreview
-              config={parsedConfig}
-              teamOptions={parsedTeamOptions}
-              selectOptions={parsedSelectOptions}
-            />
+            <div className="sticky top-16">
+              <FormPreview
+                config={questions}
+                teamOptions={teamOptions}
+                selectOptions={selectOptions}
+              />
+            </div>
           )}
         </div>
       </div>

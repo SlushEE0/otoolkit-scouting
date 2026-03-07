@@ -29,24 +29,7 @@ export function TeamField({ question, localOptions }: TeamFieldProps) {
     if (localOptions) {
       setOptions(localOptions);
       setIsLoading(false);
-      return;
     }
-
-    // Fallback: try loading from Supabase if no local options provided
-    const loadOptions = async () => {
-      setIsLoading(true);
-      try {
-        const { fetchTeamOptions } = await import("@/lib/db/scouting");
-        const options = await fetchTeamOptions();
-        setOptions(options ?? []);
-      } catch {
-        console.warn("Failed to load team options from Supabase");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadOptions();
   }, [localOptions]);
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { ScoutingConfig, ScoutingEntry } from "@/lib/types";
+import type { FieldDefinition, ScoutingConfig, ScoutingEntry } from "@/lib/types";
 import FormHeader from "./FormHeader";
 import FieldInput from "./FieldInput";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useScouterName } from "@/hooks/useScouterName";
+
+function buildDefaultValues(schema: FieldDefinition[]): Record<string, string | number | boolean> {
+  const defaults: Record<string, string | number | boolean> = {};
+  for (const f of schema) {
+    defaults[f.key] = f.defaultValue ?? (f.type === "number" ? 0 : f.type === "boolean" ? false : "");
+  }
+  return defaults;
+}
 
 interface Props {
   config: ScoutingConfig;
@@ -26,19 +34,15 @@ export default function ScoutingForm({ config, onSubmit }: Props) {
   const [teamNumber, setTeamNumber] = useState(0);
   const [alliance, setAlliance] = useState<"red" | "blue">("red");
   const [station, setStation] = useState<1 | 2 | 3>(1);
-  const [fieldData, setFieldData] = useState<Record<string, any>>({});
+  const [fieldData, setFieldData] = useState<Record<string, string | number | boolean>>({});
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [lastEntry, setLastEntry] = useState<ScoutingEntry | null>(null);
 
   useEffect(() => {
-    const defaults: Record<string, any> = {};
-    for (const f of config.fieldSchema) {
-      defaults[f.key] = f.defaultValue ?? (f.type === "number" ? 0 : f.type === "boolean" ? false : "");
-    }
-    setFieldData(defaults);
+    setFieldData(buildDefaultValues(config.fieldSchema));
   }, [config]);
 
-  function handleFieldChange(key: string, value: any) {
+  function handleFieldChange(key: string, value: string | number | boolean) {
     setFieldData((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -66,11 +70,7 @@ export default function ScoutingForm({ config, onSubmit }: Props) {
     setShowExportDialog(false);
     setMatchNumber((m) => m + 1);
     setTeamNumber(0);
-    const defaults: Record<string, any> = {};
-    for (const f of config.fieldSchema) {
-      defaults[f.key] = f.defaultValue ?? (f.type === "number" ? 0 : f.type === "boolean" ? false : "");
-    }
-    setFieldData(defaults);
+    setFieldData(buildDefaultValues(config.fieldSchema));
   }
 
   return (

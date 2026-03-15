@@ -54,7 +54,9 @@ export default function HomePage() {
               <p className={`text-3xl font-bold ${unsentCount > 0 ? "text-yellow-500" : ""}`}>
                 {unsentCount}
               </p>
-              <p className="text-sm text-muted-foreground">Unsent</p>
+              <p className="text-sm text-muted-foreground">
+                Unsent{unsentCount > 0 ? " ⚠" : ""}
+              </p>
             </CardContent>
           </Card>
         </div>

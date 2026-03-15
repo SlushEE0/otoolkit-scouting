@@ -79,7 +79,7 @@ function EntriesContent() {
           entries={filtered}
           onShowQR={handleShowQR}
           onDelete={deleteEntry}
-          config={configs.find((c) => filtered[0] && c.id === filtered[0]?.configId)}
+          configs={configs}
         />
       </div>
       <Dialog open={!!qrEntry} onOpenChange={(open) => !open && setQrEntry(null)}>

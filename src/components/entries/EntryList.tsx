@@ -5,10 +5,10 @@ interface Props {
   entries: ScoutingEntry[];
   onShowQR: (entry: ScoutingEntry) => void;
   onDelete: (id: string) => void;
-  config?: ScoutingConfig;
+  configs?: ScoutingConfig[];
 }
 
-export default function EntryList({ entries, onShowQR, onDelete, config }: Props) {
+export default function EntryList({ entries, onShowQR, onDelete, configs }: Props) {
   if (entries.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -20,7 +20,7 @@ export default function EntryList({ entries, onShowQR, onDelete, config }: Props
   return (
     <div className="flex flex-col gap-3">
       {entries.map((e) => (
-        <EntryCard key={e.id} entry={e} onShowQR={onShowQR} onDelete={onDelete} config={config} />
+        <EntryCard key={e.id} entry={e} onShowQR={onShowQR} onDelete={onDelete} configs={configs} />
       ))}
     </div>
   );

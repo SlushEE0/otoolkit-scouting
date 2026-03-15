@@ -12,8 +12,14 @@ interface Props {
 export default function QRScanner({ onScan, onError, onCancel }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<Html5QrcodeScannerType | null>(null);
+  const onScanRef = useRef(onScan);
+  const onErrorRef = useRef(onError);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Keep refs in sync so the scanner callbacks always call the latest prop values
+  onScanRef.current = onScan;
+  onErrorRef.current = onError;
 
   useEffect(() => {
     let mounted = true;
@@ -38,7 +44,7 @@ export default function QRScanner({ onScan, onError, onCancel }: Props) {
         scannerRef.current = scanner;
         scanner.render(
           (decodedText: string) => {
-            onScan(decodedText);
+            onScanRef.current(decodedText);
             scanner.clear().catch(() => {});
           },
           (_errorMsg: string) => {
@@ -46,11 +52,12 @@ export default function QRScanner({ onScan, onError, onCancel }: Props) {
           }
         );
         setLoading(false);
-      } catch (err: any) {
-        if (err?.message?.includes("permission") || err?.name === "NotAllowedError") {
+      } catch (err: unknown) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        if (error.message.includes("permission") || (err as { name?: string })?.name === "NotAllowedError") {
           setPermissionDenied(true);
         }
-        onError?.(String(err));
+        onErrorRef.current?.(error.message);
         setLoading(false);
       }
     }

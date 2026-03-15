@@ -10,12 +10,13 @@ interface Props {
   entry: ScoutingEntry;
   onShowQR: (entry: ScoutingEntry) => void;
   onDelete: (id: string) => void;
-  config?: ScoutingConfig;
+  configs?: ScoutingConfig[];
 }
 
-export default function EntryCard({ entry, onShowQR, onDelete, config }: Props) {
+export default function EntryCard({ entry, onShowQR, onDelete, configs }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const config = configs?.find((c) => c.id === entry.configId);
 
   return (
     <Card className="border border-border">

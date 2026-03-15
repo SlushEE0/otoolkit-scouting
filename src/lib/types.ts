@@ -3,7 +3,7 @@ export interface FieldDefinition {
   label: string;
   type: "number" | "boolean" | "select" | "text";
   options?: string[];
-  defaultValue?: any;
+  defaultValue?: string | number | boolean;
   min?: number;
   max?: number;
 }
@@ -29,6 +29,6 @@ export interface ScoutingEntry {
   station: 1 | 2 | 3;
   scoutName: string;
   submittedAt: number;
-  data: Record<string, any>;
+  data: Record<string, string | number | boolean>;
   exported: boolean;
 }

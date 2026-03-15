@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useConfigs } from "@/hooks/useConfigs";
 import { useEntries } from "@/hooks/useEntries";
@@ -15,11 +15,19 @@ export default function ScoutPage() {
   const { saveEntry } = useEntries();
   const { name: scoutName } = useScouterName();
   const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function showToast(msg: string) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   }
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   const handleSubmit = useCallback(async (entry: ScoutingEntry) => {
     await saveEntry(entry);

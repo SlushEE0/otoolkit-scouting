@@ -5,13 +5,14 @@ import type { FieldDefinition } from "@/lib/types";
 
 interface Props {
   field: FieldDefinition;
-  value: any;
-  onChange: (value: any) => void;
+  value: string | number | boolean;
+  onChange: (value: string | number | boolean) => void;
 }
 
 export default function FieldInput({ field, value, onChange }: Props) {
   if (field.type === "number") {
-    const num = typeof value === "number" ? value : (field.defaultValue ?? 0);
+    const raw = value;
+    const num = typeof raw === "number" ? raw : typeof field.defaultValue === "number" ? field.defaultValue : 0;
     const min = field.min ?? -Infinity;
     const max = field.max ?? Infinity;
     return (
@@ -82,7 +83,7 @@ export default function FieldInput({ field, value, onChange }: Props) {
       <div className="flex flex-col gap-1">
         <Label className="text-sm font-medium">{field.label}</Label>
         <select
-          value={value ?? ""}
+          value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
           className="w-full h-11 px-3 rounded-md bg-secondary border border-border text-foreground"
         >
@@ -101,7 +102,7 @@ export default function FieldInput({ field, value, onChange }: Props) {
       <Label className="text-sm font-medium">{field.label}</Label>
       <textarea
         rows={3}
-        value={value ?? ""}
+        value={typeof value === "string" ? value : ""}
         onChange={(e) => onChange(e.target.value)}
         className="w-full px-3 py-2 rounded-md bg-secondary border border-border text-foreground resize-none"
       />

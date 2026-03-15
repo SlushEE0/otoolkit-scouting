@@ -1,218 +1,141 @@
 "use client";
-
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ChangeEvent
-} from "react";
-import { toast } from "sonner";
-import { LocalhostScoutingDB } from "@/lib/db/host/scouting";
-
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { useScouterName, SCOUTER_NAME_KEY } from "@/hooks/useScouterName";
+import { useConfigs } from "@/hooks/useConfigs";
+import PageHeader from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-  FieldSet
-} from "@/components/ui/field";
-import {
-  clearLocalSettings,
-  hasLocalSettingsChanges,
-  loadLocalSettings,
-  saveLocalSettings,
-  validateLocalSettings
-} from "@/lib/db/settings";
-import z from "zod";
-import { useNavbar } from "@/hooks/useNavbar";
-
-type FormErrors = {
-  hostUrl?: string;
-  config?: string;
-};
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { db } from "@/lib/db";
 
 export default function SettingsPage() {
-  const [hostUrl, setHostUrl] = useState("");
-  const [config, setConfig] = useState("{}");
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [isSaving, setIsSaving] = useState(false);
+  const { name, setName } = useScouterName();
+  const { activeConfig } = useConfigs();
+  const [confirmClearEntries, setConfirmClearEntries] = useState(false);
+  const [confirmClearConfigs, setConfirmClearConfigs] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
-  const ws = useMemo(() => new LocalhostScoutingDB(), []);
+  async function clearEntries() {
+    await db.entries.clear();
+    setConfirmClearEntries(false);
+  }
 
-  const { setMobileNavbarSide } = useNavbar();
+  async function clearConfigs() {
+    await db.configs.clear();
+    setConfirmClearConfigs(false);
+  }
 
-  const hasUnsavedChanges = useMemo(() => {
-    return hasLocalSettingsChanges({ hostUrl, config });
-  }, [hostUrl, config]);
-
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
-    event.preventDefault();
-
-    const validationResult = validateLocalSettings({ hostUrl, config });
-
-    if (!validationResult.success) {
-      const fieldErrors = z.treeifyError(validationResult.error).properties;
-      setErrors({
-        hostUrl: fieldErrors?.hostUrl?.errors.at(0),
-        config: fieldErrors?.config?.errors.at(0)
-      });
-      toast.error("Please fix the highlighted fields.");
-      return;
-    }
-
-    setErrors({});
-    setIsSaving(true);
-
-    try {
-      const nextValues = validationResult.data;
-      saveLocalSettings(nextValues);
-      setHostUrl(nextValues.hostUrl);
-      setConfig(nextValues.config || "{}");
-      toast.success("Settings saved locally.");
-    } catch {
-      toast.error("Unable to save settings. Try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleResetToStored = useCallback(() => {
-    const stored = loadLocalSettings();
-    setHostUrl(stored.hostUrl);
-    setConfig(stored.config || "{}");
-    setErrors({});
-    toast.info("Reverted to saved values.");
-  }, []);
-
-  const handleClear = () => {
-    clearLocalSettings();
-    setHostUrl("");
-    setConfig("{}");
-    setErrors({});
-    toast.success("Local settings cleared.");
-  };
-
-  const handleHostChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setHostUrl(event.target.value);
-    if (errors.hostUrl) {
-      setErrors((prev) => ({ ...prev, hostUrl: undefined }));
-    }
-  };
-
-  const handleConfigChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    setConfig(event.target.value);
-    if (errors.config) {
-      setErrors((prev) => ({ ...prev, config: undefined }));
-    }
-  };
-
-  useEffect(() => {
-    handleResetToStored();
-
-    setMobileNavbarSide("right");
-  }, [handleResetToStored]);
+  async function resetApp() {
+    await db.entries.clear();
+    await db.configs.clear();
+    localStorage.removeItem(SCOUTER_NAME_KEY);
+    setConfirmReset(false);
+    window.location.reload();
+  }
 
   return (
-    <div className="w-full h-full container mx-auto flex flex-col gap-6 p-4 md:p-8">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-semibold">Settings</h1>
-        <p className="text-muted-foreground text-sm md:text-base">
-          These preferences live in your browser&apos;s local storage and stay
-          on this device only.
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+    <div className="flex flex-col">
+      <PageHeader title="Settings" />
+      <div className="px-4 flex flex-col gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Scouting Service</CardTitle>
-            <CardDescription>
-              Configure how this app connects to your scouting backend and
-              passes request payloads.
-            </CardDescription>
+            <CardTitle className="text-base">Scout Identity</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="scout-name">Your Name</Label>
+              <Input
+                id="scout-name"
+                placeholder="Enter your name…"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Active Config</CardTitle>
           </CardHeader>
           <CardContent>
-            <FieldSet>
-              <Field data-invalid={Boolean(errors.hostUrl)}>
-                <FieldLabel htmlFor="hostUrl">Host URL</FieldLabel>
-                <FieldContent>
-                  <FieldDescription>
-                    Provide the root URL for your scouting backend (include
-                    protocol).
-                  </FieldDescription>
-                  <Input
-                    id="hostUrl"
-                    type="url"
-                    placeholder="https://100.0.0.1:3749"
-                    value={hostUrl}
-                    aria-invalid={Boolean(errors.hostUrl)}
-                    onChange={handleHostChange}
-                    autoComplete="off"
-                  />
-                  <FieldError>{errors.hostUrl}</FieldError>
-                </FieldContent>
-              </Field>
-
-              <Field data-invalid={Boolean(errors.config)}>
-                <FieldLabel htmlFor="config">Config JSON</FieldLabel>
-                <FieldContent>
-                  <FieldDescription>
-                    Paste any JSON payload your client should send with outbound
-                    requests.
-                  </FieldDescription>
-                  <Textarea
-                    id="config"
-                    spellCheck={false}
-                    rows={10}
-                    placeholder={`{\n  "apiKey": "..."\n}`}
-                    value={config}
-                    aria-invalid={Boolean(errors.config)}
-                    onChange={handleConfigChange}
-                  />
-                  <FieldError>{errors.config}</FieldError>
-                </FieldContent>
-              </Field>
-            </FieldSet>
+            {activeConfig ? (
+              <div>
+                <p className="font-medium">{activeConfig.name}</p>
+                {activeConfig.eventKey && (
+                  <p className="text-sm text-muted-foreground">{activeConfig.eventKey}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {activeConfig.fieldSchema.length} fields
+                </p>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm">No active config</p>
+            )}
           </CardContent>
-          <CardFooter className="justify-between gap-3 flex-wrap">
-            <div className="text-xs text-muted-foreground">
-              {hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
-            </div>
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleResetToStored}
-                disabled={isSaving}>
-                Revert
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleClear}
-                disabled={isSaving}>
-                Clear
-              </Button>
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? "Saving..." : "Save settings"}
-              </Button>
-            </div>
-          </CardFooter>
         </Card>
-      </form>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">About</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">FRC Scout v1.0.0</p>
+            <p className="text-xs text-muted-foreground">Offline-first FRC scouting PWA</p>
+          </CardContent>
+        </Card>
+        <Separator />
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {confirmClearEntries ? (
+              <div className="flex gap-2">
+                <Button variant="destructive" onClick={clearEntries} className="flex-1">
+                  Confirm Delete All Entries
+                </Button>
+                <Button variant="outline" onClick={() => setConfirmClearEntries(false)} className="flex-1">
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" onClick={() => setConfirmClearEntries(true)} className="w-full">
+                Clear All Entries
+              </Button>
+            )}
+            {confirmClearConfigs ? (
+              <div className="flex gap-2">
+                <Button variant="destructive" onClick={clearConfigs} className="flex-1">
+                  Confirm Delete All Configs
+                </Button>
+                <Button variant="outline" onClick={() => setConfirmClearConfigs(false)} className="flex-1">
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" onClick={() => setConfirmClearConfigs(true)} className="w-full">
+                Clear All Configs
+              </Button>
+            )}
+            {confirmReset ? (
+              <div className="flex gap-2">
+                <Button variant="destructive" onClick={resetApp} className="flex-1">
+                  Confirm Reset App
+                </Button>
+                <Button variant="outline" onClick={() => setConfirmReset(false)} className="flex-1">
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button variant="destructive" onClick={() => setConfirmReset(true)} className="w-full">
+                Reset App
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
+

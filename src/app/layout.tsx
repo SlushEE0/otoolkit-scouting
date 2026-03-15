@@ -1,42 +1,31 @@
-import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-
-import { Toaster } from "@/components/ui/sonner";
-import Navbar from "@/components/Navbar";
-import NavbarTip from "@/components/NavbarTip";
-
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"]
-});
-
-// const geistMono = Geist_Mono({
-//   variable: "--font-geist-mono",
-//   subsets: ["latin"]
-// });
+import BottomNav from "@/components/layout/BottomNav";
 
 export const metadata: Metadata = {
-  title: "Optix Toolkit",
-  description: "DNHS Team Optix 3749"
+  title: "FRC Scout",
+  description: "FRC Scouting PWA",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "FRC Scout",
+  },
+  manifest: "/manifest.json",
 };
 
-export default function RootLayout({
-  children
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export const viewport: Viewport = {
+  themeColor: "#3b82f6",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={"dark"}>
-        <main className={`w-full ${geistSans.className} antialiased`}>
-          <Navbar />
-          <NavbarTip />
-          <Toaster />
-          {children}
-        </main>
-        <Toaster richColors closeButton />
+      <body className="dark bg-background text-foreground">
+        <main className="pb-20">{children}</main>
+        <BottomNav />
       </body>
     </html>
   );

@@ -24,9 +24,8 @@ export default function BottomNav() {
           <Link
             key={href}
             href={href}
-            className={`flex-1 flex flex-col items-center justify-center pt-2 pb-1 min-h-[44px] transition-colors ${
-              active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
+            className={`flex-1 flex flex-col items-center justify-center min-h-[44px] mt-3 transition-colors ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
           >
             <Icon size={22} />
             <span className="text-xs mt-0.5">{label}</span>

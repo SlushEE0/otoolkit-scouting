@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
 
 interface Props {
   data: string;
@@ -23,13 +22,16 @@ export default function QRDisplay({ data, label, onDone }: Props) {
   }, [data]);
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      {label && <p className="text-sm font-medium text-muted-foreground">{label}</p>}
-      <canvas ref={canvasRef} className="rounded-lg max-w-[280px] w-full" />
+    <div className="flex flex-col items-center gap-6">
+      {label && <p className="text-sm font-medium text-slate-400">{label}</p>}
+      <canvas ref={canvasRef} className="rounded-lg max-w-[280px] w-full bg-white p-2" />
       {onDone && (
-        <Button onClick={onDone} className="w-full max-w-[280px]">
+        <button
+          onClick={onDone}
+          className="btn-primary w-full max-w-[280px] h-12"
+        >
           Done
-        </Button>
+        </button>
       )}
     </div>
   );

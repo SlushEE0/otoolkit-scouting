@@ -6,7 +6,6 @@ import { useEntries } from "@/hooks/useEntries";
 import { useScouterName } from "@/hooks/useScouterName";
 import ScoutingForm from "@/components/forms/ScoutingForm";
 import PageHeader from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/button";
 import type { ScoutingEntry } from "@/lib/types";
 
 export default function ScoutPage() {
@@ -37,11 +36,16 @@ export default function ScoutPage() {
   if (!activeConfig) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 gap-4">
-        <p className="text-muted-foreground text-center text-lg">No active config loaded.</p>
-        <p className="text-muted-foreground text-center text-sm">
+        <p className="text-slate-400 text-center text-lg">No active config loaded.</p>
+        <p className="text-slate-400 text-center text-sm">
           Go to Configs and scan a config QR code first.
         </p>
-        <Button onClick={() => router.push("/configs")}>Go to Configs</Button>
+        <button
+          className="btn-primary"
+          onClick={() => router.push("/configs")}
+        >
+          Go to Configs
+        </button>
       </div>
     );
   }
@@ -54,7 +58,7 @@ export default function ScoutPage() {
       />
       <ScoutingForm config={activeConfig} onSubmit={handleSubmit} />
       {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-primary text-primary-foreground px-6 py-3 rounded-full font-medium shadow-lg">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-6 py-3 rounded-full font-medium shadow-lg">
           {toast}
         </div>
       )}

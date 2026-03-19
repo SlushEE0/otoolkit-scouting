@@ -1,94 +1,104 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import type { Html5QrcodeScanner as Html5QrcodeScannerType } from "html5-qrcode";
-import { Button } from "@/components/ui/button";
+import { Html5Qrcode } from "html5-qrcode";
+import { X } from "lucide-react";
 
 interface Props {
-  onScan: (raw: string) => void;
-  onError?: (msg: string) => void;
+  onScan: (data: string) => void;
+  onError?: (error: string) => void;
   onCancel?: () => void;
 }
 
 export default function QRScanner({ onScan, onError, onCancel }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scannerRef = useRef<Html5QrcodeScannerType | null>(null);
-  const onScanRef = useRef(onScan);
-  const onErrorRef = useRef(onError);
-  const [permissionDenied, setPermissionDenied] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  // Keep refs in sync so the scanner callbacks always call the latest prop values
-  onScanRef.current = onScan;
-  onErrorRef.current = onError;
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-    const containerId = "qr-scanner-container";
-
-    async function init() {
+    const startScanner = async () => {
       try {
-        const { Html5QrcodeScanner } = await import("html5-qrcode");
-        if (!mounted || !containerRef.current) return;
-
-        const scanner = new Html5QrcodeScanner(
-          containerId,
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
-            rememberLastUsedCamera: true,
-            showTorchButtonIfSupported: true,
-          },
-          false
-        );
-
+        const scanner = new Html5Qrcode("qr-scanner");
         scannerRef.current = scanner;
-        scanner.render(
-          (decodedText: string) => {
-            onScanRef.current(decodedText);
-            scanner.clear().catch(() => {});
+
+        const config = {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+        };
+
+        await scanner.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText) => {
+            scanner.stop();
+            onScan(decodedText);
           },
-          (_errorMsg: string) => {
-            // Ignore frequent scan errors
+          () => {
+            // Ignore continuous scan errors
           }
         );
-        setLoading(false);
-      } catch (err: unknown) {
-        const error = err instanceof Error ? err : new Error(String(err));
-        if (error.message.includes("permission") || (err as { name?: string })?.name === "NotAllowedError") {
-          setPermissionDenied(true);
-        }
-        onErrorRef.current?.(error.message);
-        setLoading(false);
-      }
-    }
-
-    init();
-
-    return () => {
-      mounted = false;
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
+        setIsScanning(true);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to access camera";
+        setError(message);
+        onError?.(message);
       }
     };
-  }, []);
 
-  if (permissionDenied) {
-    return (
-      <div className="flex flex-col items-center gap-4 p-6 text-center">
-        <p className="text-muted-foreground">Camera permission denied. Please allow camera access in your browser settings.</p>
-        {onCancel && <Button variant="outline" onClick={onCancel}>Cancel</Button>}
-      </div>
-    );
-  }
+    startScanner();
+
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {
+          // Ignore stop errors
+        });
+      }
+    };
+  }, [onScan, onError]);
+
+  const handleCancel = async () => {
+    if (scannerRef.current) {
+      await scannerRef.current.stop().catch(() => {});
+    }
+    onCancel?.();
+  };
 
   return (
-    <div className="flex flex-col gap-4">
-      {loading && <p className="text-center text-muted-foreground text-sm">Starting camera…</p>}
-      <div id="qr-scanner-container" ref={containerRef} className="w-full" />
-      {onCancel && (
-        <Button variant="outline" onClick={onCancel} className="w-full">
-          Cancel
-        </Button>
+    <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center">
+      <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
+        <h2 className="text-white text-lg font-bold">Scan QR Code</h2>
+        <button
+          onClick={handleCancel}
+          className="text-white tap-highlight min-h-[44px] min-w-[44px] flex items-center justify-center"
+        >
+          <X size={28} />
+        </button>
+      </div>
+
+      <div id="qr-scanner" className="w-full h-full relative" />
+
+      {error && (
+        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4 p-4">
+          <p className="text-red-400 text-center font-semibold">{error}</p>
+          {error.includes("Permission") && (
+            <p className="text-slate-300 text-sm text-center">
+              Camera permission denied. Please allow camera access in settings.
+            </p>
+          )}
+          <button
+            onClick={handleCancel}
+            className="btn-secondary"
+          >
+            Close Scanner
+          </button>
+        </div>
+      )}
+
+      {!error && isScanning && (
+        <div className="absolute bottom-8 left-4 right-4">
+          <p className="text-slate-300 text-center text-sm">
+            Point camera at QR code
+          </p>
+        </div>
       )}
     </div>
   );

@@ -1,8 +1,5 @@
 "use client";
 import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { QrCode, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import type { ScoutingEntry, ScoutingConfig } from "@/lib/types";
 
@@ -18,66 +15,92 @@ export default function EntryCard({ entry, onShowQR, onDelete, configs }: Props)
   const [confirmDelete, setConfirmDelete] = useState(false);
   const config = configs?.find((c) => c.id === entry.configId);
 
+  const allianceColor = entry.alliance === "red" ? "bg-red-600" : "bg-blue-600";
+
   return (
-    <Card className="border border-border">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-base">M{entry.matchNumber}</span>
-            <span className="font-bold text-base">#{entry.teamNumber}</span>
-            <Badge
-              className={entry.alliance === "red" ? "bg-red-600 text-white" : "bg-blue-600 text-white"}
-            >
-              {entry.alliance[0].toUpperCase() + entry.alliance.slice(1)} {entry.station}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-1">
-            {entry.exported && <Badge variant="secondary">Exported</Badge>}
-          </div>
+    <div className={`card border border-slate-700`}>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-lg text-white">M{entry.matchNumber}</span>
+          <span className="font-bold text-lg text-white">#{entry.teamNumber}</span>
+          <span className={`${allianceColor} text-white text-sm font-semibold px-2 py-1 rounded`}>
+            {entry.alliance === "red" ? "Red" : "Blue"} {entry.station}
+          </span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{entry.scoutName || "Unknown scout"}</span>
-          <span>·</span>
-          <span>{new Date(entry.submittedAt).toLocaleString()}</span>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
-        <div className="flex gap-2 flex-wrap">
-          <Button size="sm" variant="outline" onClick={() => onShowQR(entry)} className="gap-1">
-            <QrCode size={14} /> QR
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setExpanded(!expanded)} className="gap-1">
-            Data {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </Button>
-          {confirmDelete ? (
-            <>
-              <Button size="sm" variant="destructive" onClick={() => onDelete(entry.id)}>Confirm</Button>
-              <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-            </>
-          ) : (
-            <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>
-              <Trash2 size={14} />
-            </Button>
+        <div className="flex items-center gap-1">
+          {entry.exported && (
+            <span className="bg-green-600 text-white text-xs font-semibold px-2 py-1 rounded">
+              Exported
+            </span>
           )}
         </div>
-        {expanded && (
-          <div className="mt-2 grid grid-cols-2 gap-1">
-            {config
-              ? config.fieldSchema.map((f) => (
-                  <div key={f.key} className="text-xs">
-                    <span className="text-muted-foreground">{f.label}: </span>
-                    <span>{String(entry.data[f.key] ?? "—")}</span>
-                  </div>
-                ))
-              : Object.entries(entry.data).map(([k, v]) => (
-                  <div key={k} className="text-xs">
-                    <span className="text-muted-foreground">{k}: </span>
-                    <span>{String(v)}</span>
-                  </div>
-                ))}
-          </div>
+      </div>
+
+      <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
+        <span>{entry.scoutName || "Unknown scout"}</span>
+        <span>·</span>
+        <span>{new Date(entry.submittedAt).toLocaleString()}</span>
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => onShowQR(entry)}
+          className="btn-secondary h-10 text-sm flex items-center gap-1"
+        >
+          <QrCode size={16} /> QR
+        </button>
+
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="btn-secondary h-10 text-sm flex items-center gap-1"
+        >
+          Data {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+
+        {confirmDelete ? (
+          <>
+            <button
+              onClick={() => onDelete(entry.id)}
+              className="btn-danger h-10 text-sm"
+            >
+              Confirm
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="btn-secondary h-10 text-sm"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="btn-secondary h-10 w-10 flex items-center justify-center text-sm"
+          >
+            <Trash2 size={18} />
+          </button>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {expanded && (
+        <div className="mt-3 pt-3 border-t border-slate-700 grid grid-cols-2 gap-2 text-xs">
+          {config
+            ? config.fieldSchema.map((f) => (
+                <div key={f.key}>
+                  <span className="text-slate-400">{f.label}:</span>
+                  <div className="text-white font-medium break-words">
+                    {String(entry.data[f.key] ?? "—")}
+                  </div>
+                </div>
+              ))
+            : Object.entries(entry.data).map(([k, v]) => (
+                <div key={k}>
+                  <span className="text-slate-400">{k}:</span>
+                  <div className="text-white font-medium break-words">{String(v)}</div>
+                </div>
+              ))}
+        </div>
+      )}
+    </div>
   );
 }

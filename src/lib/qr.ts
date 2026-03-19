@@ -1,7 +1,14 @@
-import type { ScoutingConfig, ScoutingEntry } from "./types";
+"use client";
+
+import type {
+  ConfigQRPayload,
+  EntryQRPayload,
+  ScoutingConfig,
+  ScoutingEntry,
+} from "./types";
 
 export function encodeEntryToQR(entry: ScoutingEntry): string {
-  const compact = {
+  const payload: EntryQRPayload = {
     type: "frc_entry",
     v: 1,
     event: entry.eventKey,
@@ -12,27 +19,36 @@ export function encodeEntryToQR(entry: ScoutingEntry): string {
     scout: entry.scoutName,
     ts: entry.submittedAt,
     data: entry.data,
-    id: entry.id,
-    configId: entry.configId,
-    seasonId: entry.seasonId,
   };
-  return JSON.stringify(compact);
+
+  return JSON.stringify(payload);
 }
 
 export function decodeConfigQR(raw: string): ScoutingConfig | null {
   try {
-    const parsed = JSON.parse(raw);
-    if (parsed.type !== "frc_config" || parsed.v !== 1) return null;
-    if (!parsed.name || !parsed.seasonId || !Array.isArray(parsed.fieldSchema)) return null;
-    return {
+    const payload = JSON.parse(raw) as ConfigQRPayload;
+
+    if (
+      payload.type !== "frc_config" ||
+      payload.v !== 1 ||
+      !payload.seasonId ||
+      !payload.name ||
+      !Array.isArray(payload.fieldSchema)
+    ) {
+      return null;
+    }
+
+    const config: ScoutingConfig = {
       id: crypto.randomUUID(),
-      name: parsed.name,
-      seasonId: parsed.seasonId,
-      eventKey: parsed.eventKey,
-      fieldSchema: parsed.fieldSchema,
+      name: payload.name,
+      seasonId: payload.seasonId,
+      eventKey: payload.eventKey,
+      fieldSchema: payload.fieldSchema,
       savedAt: Date.now(),
-      isActive: true,
+      isActive: false,
     };
+
+    return config;
   } catch {
     return null;
   }
@@ -40,23 +56,29 @@ export function decodeConfigQR(raw: string): ScoutingConfig | null {
 
 export function decodeEntryQR(raw: string): ScoutingEntry | null {
   try {
-    const parsed = JSON.parse(raw);
-    if (parsed.type !== "frc_entry" || parsed.v !== 1) return null;
-    return {
-      id: parsed.id || crypto.randomUUID(),
-      configId: parsed.configId || "",
-      seasonId: parsed.seasonId || "",
-      eventKey: parsed.event,
-      matchNumber: parsed.match,
-      teamNumber: parsed.team,
-      alliance: parsed.alliance,
-      station: parsed.station,
-      scoutName: parsed.scout,
-      submittedAt: parsed.ts,
-      data: parsed.data || {},
-      exported: false,
-    };
+    const payload = JSON.parse(raw) as EntryQRPayload;
+
+    if (
+      payload.type !== "frc_entry" ||
+      payload.v !== 1 ||
+      payload.match === undefined ||
+      payload.team === undefined ||
+      !payload.alliance ||
+      payload.station === undefined ||
+      !payload.scout ||
+      !payload.data
+    ) {
+      return null;
+    }
+
+    // This is for future use - converting incoming entry QR to ScoutingEntry
+    // For now, entries are created locally only
+    return null;
   } catch {
     return null;
   }
+}
+
+export function generateUUID(): string {
+  return crypto.randomUUID();
 }

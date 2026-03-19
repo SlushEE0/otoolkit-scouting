@@ -1,8 +1,5 @@
 "use client";
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import type { ScoutingConfig } from "@/lib/types";
 
@@ -17,64 +14,79 @@ export default function ConfigCard({ config, onSetActive, onDelete }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <Card className={`border ${config.isActive ? "border-primary" : "border-border"}`}>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-base truncate">{config.name}</CardTitle>
-            {config.eventKey && (
-              <p className="text-xs text-muted-foreground">{config.eventKey}</p>
-            )}
-          </div>
-          {config.isActive && <Badge variant="default">Active</Badge>}
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{config.fieldSchema.length} fields</span>
-          <span>·</span>
-          <span>{new Date(config.savedAt).toLocaleDateString()}</span>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {!config.isActive && (
-            <Button size="sm" onClick={() => onSetActive(config.id)} className="flex-1">
-              Set Active
-            </Button>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setExpanded(!expanded)}
-            className="gap-1"
-          >
-            Fields {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </Button>
-          {confirmDelete ? (
-            <>
-              <Button size="sm" variant="destructive" onClick={() => onDelete(config.id)}>
-                Confirm
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>
-              <Trash2 size={14} />
-            </Button>
+    <div className={`card border ${config.isActive ? "border-blue-500" : "border-slate-700"}`}>
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-bold text-white truncate">{config.name}</h3>
+          {config.eventKey && (
+            <p className="text-xs text-slate-400">{config.eventKey}</p>
           )}
         </div>
-        {expanded && (
-          <div className="mt-2 flex flex-col gap-1">
-            {config.fieldSchema.map((f) => (
-              <div key={f.key} className="flex items-center gap-2 text-xs">
-                <Badge variant="secondary" className="text-xs">{f.type}</Badge>
-                <span className="truncate">{f.label}</span>
-              </div>
-            ))}
-          </div>
+        {config.isActive && (
+          <span className="badge badge-blue text-xs whitespace-nowrap">Active</span>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
+        <span>{config.fieldSchema.length} fields</span>
+        <span>·</span>
+        <span>{new Date(config.savedAt).toLocaleDateString()}</span>
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        {!config.isActive && (
+          <button
+            onClick={() => onSetActive(config.id)}
+            className="btn-primary flex-1 h-10 text-sm"
+          >
+            Set Active
+          </button>
+        )}
+
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="btn-secondary flex-1 h-10 text-sm flex items-center justify-center gap-2"
+        >
+          Fields {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+
+        {confirmDelete ? (
+          <>
+            <button
+              onClick={() => onDelete(config.id)}
+              className="btn-danger h-10 text-sm"
+            >
+              Confirm
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="btn-secondary h-10 text-sm"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="btn-secondary h-10 w-10 flex items-center justify-center text-sm"
+          >
+            <Trash2 size={18} />
+          </button>
+        )}
+      </div>
+
+      {expanded && (
+        <div className="mt-3 flex flex-col gap-2 pt-3 border-t border-slate-700">
+          {config.fieldSchema.map((f) => (
+            <div key={f.key} className="flex items-center gap-2 text-xs">
+              <span className="inline-block px-2 py-1 rounded text-xs font-semibold bg-slate-700 text-slate-200">
+                {f.type}
+              </span>
+              <span className="truncate text-slate-300">{f.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

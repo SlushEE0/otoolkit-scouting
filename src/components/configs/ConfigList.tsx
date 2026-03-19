@@ -10,8 +10,8 @@ interface Props {
 export default function ConfigList({ configs, onSetActive, onDelete }: Props) {
   if (configs.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <p>No configs saved yet.</p>
+      <div className="text-center py-12 text-slate-400">
+        <p className="font-semibold">No configs saved yet.</p>
         <p className="text-sm mt-1">Scan a config QR code to get started.</p>
       </div>
     );

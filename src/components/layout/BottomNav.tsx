@@ -15,7 +15,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border flex"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-slate-800 border-t border-slate-700 flex"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.5rem)" }}
     >
       {tabs.map(({ href, label, icon: Icon }) => {
@@ -24,14 +24,18 @@ export default function BottomNav() {
           <Link
             key={href}
             href={href}
-            className={`flex-1 flex flex-col items-center justify-center min-h-[44px] mt-3 transition-colors ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
+            className={`flex-1 flex flex-col items-center justify-center min-h-[56px] transition-colors tap-highlight ${
+              active
+                ? "text-blue-400"
+                : "text-slate-400 active:text-slate-300"
+            }`}
           >
             <Icon size={22} />
-            <span className="text-xs mt-0.5">{label}</span>
+            <span className="text-xs mt-1 font-medium">{label}</span>
           </Link>
         );
       })}
     </nav>
   );
 }
+

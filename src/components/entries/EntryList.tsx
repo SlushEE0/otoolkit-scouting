@@ -11,8 +11,8 @@ interface Props {
 export default function EntryList({ entries, onShowQR, onDelete, configs }: Props) {
   if (entries.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <p>No entries recorded yet.</p>
+      <div className="text-center py-12 text-slate-400">
+        <p className="font-semibold">No entries recorded yet.</p>
         <p className="text-sm mt-1">Start scouting to add entries.</p>
       </div>
     );

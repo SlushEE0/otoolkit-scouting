@@ -4,18 +4,10 @@ import { useRouter } from "next/navigation";
 import type { FieldDefinition, ScoutingConfig, ScoutingEntry } from "@/lib/types";
 import FormHeader from "./FormHeader";
 import FieldInput from "./FieldInput";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { useScouterName } from "@/hooks/useScouterName";
 
-function buildDefaultValues(schema: FieldDefinition[]): Record<string, string | number | boolean> {
-  const defaults: Record<string, string | number | boolean> = {};
+function buildDefaultValues(schema: FieldDefinition[]): Record<string, any> {
+  const defaults: Record<string, any> = {};
   for (const f of schema) {
     defaults[f.key] = f.defaultValue ?? (f.type === "number" ? 0 : f.type === "boolean" ? false : "");
   }
@@ -34,19 +26,24 @@ export default function ScoutingForm({ config, onSubmit }: Props) {
   const [teamNumber, setTeamNumber] = useState(0);
   const [alliance, setAlliance] = useState<"red" | "blue">("red");
   const [station, setStation] = useState<1 | 2 | 3>(1);
-  const [fieldData, setFieldData] = useState<Record<string, string | number | boolean>>({});
-  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [fieldData, setFieldData] = useState<Record<string, any>>({});
+  const [showExportPrompt, setShowExportPrompt] = useState(false);
   const [lastEntry, setLastEntry] = useState<ScoutingEntry | null>(null);
 
   useEffect(() => {
     setFieldData(buildDefaultValues(config.fieldSchema));
   }, [config]);
 
-  function handleFieldChange(key: string, value: string | number | boolean) {
+  function handleFieldChange(key: string, value: any) {
     setFieldData((prev) => ({ ...prev, [key]: value }));
   }
 
   function handleSubmit() {
+    if (teamNumber <= 0) {
+      alert("Please enter a team number");
+      return;
+    }
+
     const entry: ScoutingEntry = {
       id: crypto.randomUUID(),
       configId: config.id,
@@ -63,18 +60,18 @@ export default function ScoutingForm({ config, onSubmit }: Props) {
     };
     setLastEntry(entry);
     onSubmit(entry);
-    setShowExportDialog(true);
+    setShowExportPrompt(true);
   }
 
   function handleScoutNext() {
-    setShowExportDialog(false);
+    setShowExportPrompt(false);
     setMatchNumber((m) => m + 1);
     setTeamNumber(0);
     setFieldData(buildDefaultValues(config.fieldSchema));
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 pb-6">
+    <div className="flex flex-col gap-4 px-4 pb-28">
       <FormHeader
         matchNumber={matchNumber}
         teamNumber={teamNumber}
@@ -93,45 +90,43 @@ export default function ScoutingForm({ config, onSubmit }: Props) {
           onChange={(v) => handleFieldChange(field.key, v)}
         />
       ))}
-      <div className="sticky bottom-20 pt-2">
-        <Button
-          onClick={handleSubmit}
-          className="w-full h-14 text-lg font-bold"
-          disabled={teamNumber <= 0}
-        >
-          Save Entry
-        </Button>
-        {teamNumber <= 0 && (
-          <p className="text-xs text-muted-foreground text-center mt-1">Enter a team number to save</p>
-        )}
-      </div>
-      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Entry Saved!</DialogTitle>
-          </DialogHeader>
-          <p className="text-muted-foreground text-sm">
-            Match {lastEntry?.matchNumber} — Team {lastEntry?.teamNumber} recorded.
-            Export now via QR code?
-          </p>
-          <DialogFooter className="flex-col gap-2">
-            <Button
-              onClick={() => {
-                setShowExportDialog(false);
-                if (lastEntry) {
+      
+      <button
+        onClick={handleSubmit}
+        disabled={teamNumber <= 0}
+        className="w-full h-14 text-lg font-bold bg-green-600 text-white rounded-lg active:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed sticky bottom-24"
+      >
+        Save Entry
+      </button>
+
+      {showExportPrompt && lastEntry && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="w-full bg-slate-800 rounded-t-lg p-4 border-t border-slate-700">
+            <h2 className="text-xl font-bold text-white mb-2">Entry Saved!</h2>
+            <p className="text-slate-300 mb-4">
+              Match {lastEntry.matchNumber} — Team {lastEntry.teamNumber} recorded.
+              Export now via QR code?
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                className="btn-primary w-full h-12"
+                onClick={() => {
+                  setShowExportPrompt(false);
                   router.push(`/entries?highlight=${lastEntry.id}`);
-                }
-              }}
-              className="w-full"
-            >
-              Export QR
-            </Button>
-            <Button variant="outline" onClick={handleScoutNext} className="w-full">
-              Scout Next
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                }}
+              >
+                Export QR
+              </button>
+              <button
+                className="btn-secondary w-full h-12"
+                onClick={handleScoutNext}
+              >
+                Scout Next
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
